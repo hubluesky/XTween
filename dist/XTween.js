@@ -1,6 +1,3 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.xtween = exports.XTween = void 0;
 class TweenSetAction {
     constructor(properties) {
         this.valuesEnd = Object.assign({}, properties);
@@ -237,7 +234,7 @@ const tweenManager = new TweenManager();
  * .set({ visable: false })
  * .start();
  */
-class XTween {
+export class XTween {
     /**
      * 创建一个补间动画
      * @param target 要补间的目标对象
@@ -455,7 +452,6 @@ class XTween {
         tweenManager.update();
     }
 }
-exports.XTween = XTween;
 XTween.Easing = {
     Linear: {
         None: function (amount) {
@@ -687,8 +683,7 @@ class RepeatAction {
     }
     onCompleted(target) { }
 }
-function xtween(target) {
+export function xtween(target) {
     return new XTween(target);
 }
-exports.xtween = xtween;
 //# sourceMappingURL=XTween.js.map

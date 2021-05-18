@@ -8,6 +8,9 @@
 
 示例：
 ```ts
+// 注意使用时需要每帧更新一下
+setInterval(XTween.updateTweens, 1);
+
 class Target {
     visable: boolean = false;
     position = { x: 0, y: 0, z: 0 };
@@ -17,14 +20,11 @@ class Target {
     height: number = 200;
 }
 
-console.log("init xtween");
-setInterval(XTween.intialize(), 1);
-
 let target = new Target();
 let target2 = new Target();
 
 xtween(target)
-    .to(1000, { width: 500, rotation: 360 }, { easing: XTween.Easing.Back.InOut })
+    .to(1000, { width: 500, rotation: 360 }, { easing: XTween.Easing.Back.Out })
     .to(1500, { height: 600 }, {
         onComplete: (target) => {
             console.log("onComplete 1", target);
