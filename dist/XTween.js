@@ -153,6 +153,7 @@ class CallAction {
 }
 class TweenManager {
     constructor() {
+        this.lastTime = Date.now();
         this.actionGroupList = [];
     }
     add(actionGroup) {
@@ -179,9 +180,6 @@ class TweenManager {
     removeAll() {
         this.actionGroupList.length = 0;
     }
-    intialize(startTime = Date.now()) {
-        this.lastTime = startTime;
-    }
     update(time = Date.now()) {
         let deltaTime = time - this.lastTime;
         this.lastTime = time;
@@ -193,46 +191,212 @@ class TweenManager {
     }
 }
 const tweenManager = new TweenManager();
+const TweenEasing = {
+    Linear: {
+        None: function (amount) {
+            return amount;
+        },
+    },
+    Quadratic: {
+        In: function (amount) {
+            return amount * amount;
+        },
+        Out: function (amount) {
+            return amount * (2 - amount);
+        },
+        InOut: function (amount) {
+            if ((amount *= 2) < 1)
+                return 0.5 * amount * amount;
+            return -0.5 * (--amount * (amount - 2) - 1);
+        },
+    },
+    Cubic: {
+        In: function (amount) {
+            return amount * amount * amount;
+        },
+        Out: function (amount) {
+            return --amount * amount * amount + 1;
+        },
+        InOut: function (amount) {
+            if ((amount *= 2) < 1)
+                return 0.5 * amount * amount * amount;
+            return 0.5 * ((amount -= 2) * amount * amount + 2);
+        },
+    },
+    Quartic: {
+        In: function (amount) {
+            return amount * amount * amount * amount;
+        },
+        Out: function (amount) {
+            return 1 - --amount * amount * amount * amount;
+        },
+        InOut: function (amount) {
+            if ((amount *= 2) < 1)
+                return 0.5 * amount * amount * amount * amount;
+            return -0.5 * ((amount -= 2) * amount * amount * amount - 2);
+        },
+    },
+    Quintic: {
+        In: function (amount) {
+            return amount * amount * amount * amount * amount;
+        },
+        Out: function (amount) {
+            return --amount * amount * amount * amount * amount + 1;
+        },
+        InOut: function (amount) {
+            if ((amount *= 2) < 1)
+                return 0.5 * amount * amount * amount * amount * amount;
+            return 0.5 * ((amount -= 2) * amount * amount * amount * amount + 2);
+        },
+    },
+    Sinusoidal: {
+        In: function (amount) {
+            return 1 - Math.cos((amount * Math.PI) / 2);
+        },
+        Out: function (amount) {
+            return Math.sin((amount * Math.PI) / 2);
+        },
+        InOut: function (amount) {
+            return 0.5 * (1 - Math.cos(Math.PI * amount));
+        },
+    },
+    Exponential: {
+        In: function (amount) {
+            return amount === 0 ? 0 : Math.pow(1024, amount - 1);
+        },
+        Out: function (amount) {
+            return amount === 1 ? 1 : 1 - Math.pow(2, -10 * amount);
+        },
+        InOut: function (amount) {
+            if (amount === 0 || amount === 1)
+                return amount;
+            if ((amount *= 2) < 1)
+                return 0.5 * Math.pow(1024, amount - 1);
+            return 0.5 * (-Math.pow(2, -10 * (amount - 1)) + 2);
+        },
+    },
+    Circular: {
+        In: function (amount) {
+            return 1 - Math.sqrt(1 - amount * amount);
+        },
+        Out: function (amount) {
+            return Math.sqrt(1 - --amount * amount);
+        },
+        InOut: function (amount) {
+            if ((amount *= 2) < 1)
+                return -0.5 * (Math.sqrt(1 - amount * amount) - 1);
+            return 0.5 * (Math.sqrt(1 - (amount -= 2) * amount) + 1);
+        },
+    },
+    Elastic: {
+        In: function (amount) {
+            if (amount === 0 || amount === 1)
+                return amount;
+            return -Math.pow(2, 10 * (amount - 1)) * Math.sin((amount - 1.1) * 5 * Math.PI);
+        },
+        Out: function (amount) {
+            if (amount === 0 || amount === 1)
+                return amount;
+            return Math.pow(2, -10 * amount) * Math.sin((amount - 0.1) * 5 * Math.PI) + 1;
+        },
+        InOut: function (amount) {
+            if (amount === 0 || amount === 1)
+                return amount;
+            amount *= 2;
+            if (amount < 1)
+                return -0.5 * Math.pow(2, 10 * (amount - 1)) * Math.sin((amount - 1.1) * 5 * Math.PI);
+            return 0.5 * Math.pow(2, -10 * (amount - 1)) * Math.sin((amount - 1.1) * 5 * Math.PI) + 1;
+        },
+    },
+    Back: {
+        In: function (amount) {
+            const s = 1.70158;
+            return amount * amount * ((s + 1) * amount - s);
+        },
+        Out: function (amount) {
+            const s = 1.70158;
+            return --amount * amount * ((s + 1) * amount + s) + 1;
+        },
+        InOut: function (amount) {
+            const s = 1.70158 * 1.525;
+            if ((amount *= 2) < 1)
+                return 0.5 * (amount * amount * ((s + 1) * amount - s));
+            return 0.5 * ((amount -= 2) * amount * ((s + 1) * amount + s) + 2);
+        },
+    },
+    Bounce: {
+        In: function (amount) {
+            return 1 - XTween.Easing.Bounce.Out(1 - amount);
+        },
+        Out: function (amount) {
+            if (amount < 1 / 2.75) {
+                return 7.5625 * amount * amount;
+            }
+            else if (amount < 2 / 2.75) {
+                return 7.5625 * (amount -= 1.5 / 2.75) * amount + 0.75;
+            }
+            else if (amount < 2.5 / 2.75) {
+                return 7.5625 * (amount -= 2.25 / 2.75) * amount + 0.9375;
+            }
+            else {
+                return 7.5625 * (amount -= 2.625 / 2.75) * amount + 0.984375;
+            }
+        },
+        InOut: function (amount) {
+            if (amount < 0.5)
+                return XTween.Easing.Bounce.In(amount * 2) * 0.5;
+            return XTween.Easing.Bounce.Out(amount * 2 - 1) * 0.5 + 0.5;
+        },
+    },
+};
 /**
  * 这是一个补间动画
  * 支持对象的number属性
  * 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。
  * 支持每一个动作进行onStart, onUpdate, onComplete事件回调。
  * 支持泛型参数推导。可以对要补间的动画参数进行语法检查和补全。
- * 支持连续拼接动作
+ * 支持连续拼接动作。
  *
- * 注意使用前需要初始化一下：
- * @example
- * setInterval(XTween.intialize(), 1);
+ * ```
+ *  // 注意使用时需要每帧更新一下
+ *  setInterval(XTween.updateTweens, 1);
  *
- * 使用示例
- * @example
- * xtween(this.installBtn)
- *  .to(1000, { "bottom": 500, "rotation": 360 }, { easing: XTween.Easing.Back.InOut })
- *  .to(1500, { "scaleX": 2 }, {
- *      onUpdate: (target, ratio) => {
- *          console.log("onUpdate 1", target.scaleX, ratio);
- *      },
- *      onComplete: (target) => {
- *          console.log("onComplete 1", target.scaleX);
- *      }
- *  })
- *  .delay(1000)
- *  .repeat(2, xtween(this.installBtn).to(1500, { "alpha": 0 }).to(1500, { "alpha": 1 }))
- *  .sequence(new Tween(this.logo).to(1000, { "top": 100 }), xtween(this.spinModelImage).to(1000, { "centerY": -500 }))
- *  .call(() => {
- *      console.log("Call 1", this.installBtn.scaleX);
- *  })
- *  .to(1500, { "scaleX": 1.0 }, {
- *      onStart: (target) => {
- *          console.log("onStart ", target.scaleX);
- *      },
- *      onUpdate: (target, ratio) => {
- *          console.log("onUpdate ", target.scaleX, ratio);
- *      }
- *  })
- * .set({ visable: false })
- * .start();
+ *  class Target {
+ *      visable: boolean = false;
+ *      position = { x: 0, y: 0, z: 0 };
+ *      rotation: number = 0;
+ *      alpha: number = 0;
+ *      width: number = 100;
+ *      height: number = 200;
+ *  }
+ *
+ *  let target = new Target();
+ *  let target2 = new Target();
+ *
+ *  xtween(target)
+ *      .to(1000, { width: 500, rotation: 360 }, { easing: XTween.Easing.Back.Out })
+ *      .to(1500, { height: 600 }, {
+ *          onComplete: (target) => {
+ *              console.log("onComplete 1", target);
+ *          }
+ *      })
+ *      .delay(1000)
+ *      .repeat(4, true, xtween(target).to(300, { alpha: 1 }).to(300, { alpha: 0 }))
+ *      .sequence(xtween(target).to(1000, { rotation: 100 }), xtween(target2).to(1000, { rotation: 100 }))
+ *      .call(() => {
+ *          console.log("Call 1", target, target2);
+ *      })
+ *      .to(1500, { position: { x: 10, y: 20, z: 30 } }, {
+ *          onStart: (target) => {
+ *              console.log("onStart ", target);
+ *          }
+ *      })
+ *      .set({ visable: false })
+ *      .call(() => {
+ *          console.log("Call 2", target, target2);
+ *      })
+ *      .start();
+ * ```
  */
 export class XTween {
     /**
@@ -434,182 +598,15 @@ export class XTween {
         return tweenManager.containTweens(target);
     }
     /**
-     * 初始化Tween，会返回更新函数。
-     * @example
-     * setInterval(XTween.intialize(), 1);
-     * @returns 返回更新函数
-     */
-    static intialize() {
-        tweenManager.intialize();
-        return XTween.updateTweens;
-    }
-    /**
      * Tween的更新函数
      * @example
-     * setInterval(XTween.intialize(), 1);
+     * setInterval(XTween.updateTweens, 1);
      */
     static updateTweens() {
         tweenManager.update();
     }
 }
-XTween.Easing = {
-    Linear: {
-        None: function (amount) {
-            return amount;
-        },
-    },
-    Quadratic: {
-        In: function (amount) {
-            return amount * amount;
-        },
-        Out: function (amount) {
-            return amount * (2 - amount);
-        },
-        InOut: function (amount) {
-            if ((amount *= 2) < 1)
-                return 0.5 * amount * amount;
-            return -0.5 * (--amount * (amount - 2) - 1);
-        },
-    },
-    Cubic: {
-        In: function (amount) {
-            return amount * amount * amount;
-        },
-        Out: function (amount) {
-            return --amount * amount * amount + 1;
-        },
-        InOut: function (amount) {
-            if ((amount *= 2) < 1)
-                return 0.5 * amount * amount * amount;
-            return 0.5 * ((amount -= 2) * amount * amount + 2);
-        },
-    },
-    Quartic: {
-        In: function (amount) {
-            return amount * amount * amount * amount;
-        },
-        Out: function (amount) {
-            return 1 - --amount * amount * amount * amount;
-        },
-        InOut: function (amount) {
-            if ((amount *= 2) < 1)
-                return 0.5 * amount * amount * amount * amount;
-            return -0.5 * ((amount -= 2) * amount * amount * amount - 2);
-        },
-    },
-    Quintic: {
-        In: function (amount) {
-            return amount * amount * amount * amount * amount;
-        },
-        Out: function (amount) {
-            return --amount * amount * amount * amount * amount + 1;
-        },
-        InOut: function (amount) {
-            if ((amount *= 2) < 1)
-                return 0.5 * amount * amount * amount * amount * amount;
-            return 0.5 * ((amount -= 2) * amount * amount * amount * amount + 2);
-        },
-    },
-    Sinusoidal: {
-        In: function (amount) {
-            return 1 - Math.cos((amount * Math.PI) / 2);
-        },
-        Out: function (amount) {
-            return Math.sin((amount * Math.PI) / 2);
-        },
-        InOut: function (amount) {
-            return 0.5 * (1 - Math.cos(Math.PI * amount));
-        },
-    },
-    Exponential: {
-        In: function (amount) {
-            return amount === 0 ? 0 : Math.pow(1024, amount - 1);
-        },
-        Out: function (amount) {
-            return amount === 1 ? 1 : 1 - Math.pow(2, -10 * amount);
-        },
-        InOut: function (amount) {
-            if (amount === 0 || amount === 1)
-                return amount;
-            if ((amount *= 2) < 1)
-                return 0.5 * Math.pow(1024, amount - 1);
-            return 0.5 * (-Math.pow(2, -10 * (amount - 1)) + 2);
-        },
-    },
-    Circular: {
-        In: function (amount) {
-            return 1 - Math.sqrt(1 - amount * amount);
-        },
-        Out: function (amount) {
-            return Math.sqrt(1 - --amount * amount);
-        },
-        InOut: function (amount) {
-            if ((amount *= 2) < 1)
-                return -0.5 * (Math.sqrt(1 - amount * amount) - 1);
-            return 0.5 * (Math.sqrt(1 - (amount -= 2) * amount) + 1);
-        },
-    },
-    Elastic: {
-        In: function (amount) {
-            if (amount === 0 || amount === 1)
-                return amount;
-            return -Math.pow(2, 10 * (amount - 1)) * Math.sin((amount - 1.1) * 5 * Math.PI);
-        },
-        Out: function (amount) {
-            if (amount === 0 || amount === 1)
-                return amount;
-            return Math.pow(2, -10 * amount) * Math.sin((amount - 0.1) * 5 * Math.PI) + 1;
-        },
-        InOut: function (amount) {
-            if (amount === 0 || amount === 1)
-                return amount;
-            amount *= 2;
-            if (amount < 1)
-                return -0.5 * Math.pow(2, 10 * (amount - 1)) * Math.sin((amount - 1.1) * 5 * Math.PI);
-            return 0.5 * Math.pow(2, -10 * (amount - 1)) * Math.sin((amount - 1.1) * 5 * Math.PI) + 1;
-        },
-    },
-    Back: {
-        In: function (amount) {
-            const s = 1.70158;
-            return amount * amount * ((s + 1) * amount - s);
-        },
-        Out: function (amount) {
-            const s = 1.70158;
-            return --amount * amount * ((s + 1) * amount + s) + 1;
-        },
-        InOut: function (amount) {
-            const s = 1.70158 * 1.525;
-            if ((amount *= 2) < 1)
-                return 0.5 * (amount * amount * ((s + 1) * amount - s));
-            return 0.5 * ((amount -= 2) * amount * ((s + 1) * amount + s) + 2);
-        },
-    },
-    Bounce: {
-        In: function (amount) {
-            return 1 - XTween.Easing.Bounce.Out(1 - amount);
-        },
-        Out: function (amount) {
-            if (amount < 1 / 2.75) {
-                return 7.5625 * amount * amount;
-            }
-            else if (amount < 2 / 2.75) {
-                return 7.5625 * (amount -= 1.5 / 2.75) * amount + 0.75;
-            }
-            else if (amount < 2.5 / 2.75) {
-                return 7.5625 * (amount -= 2.25 / 2.75) * amount + 0.9375;
-            }
-            else {
-                return 7.5625 * (amount -= 2.625 / 2.75) * amount + 0.984375;
-            }
-        },
-        InOut: function (amount) {
-            if (amount < 0.5)
-                return XTween.Easing.Bounce.In(amount * 2) * 0.5;
-            return XTween.Easing.Bounce.Out(amount * 2 - 1) * 0.5 + 0.5;
-        },
-    },
-};
+XTween.Easing = TweenEasing;
 class SequenceAction {
     constructor(...tweens) {
         this.tweens = tweens;

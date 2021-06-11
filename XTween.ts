@@ -40,7 +40,8 @@ export interface ITweenOption<T> {
 }
 
 interface Action<T> {
-    onStart(target: T, resetValue: boolean): void;
+    onInitialize(target: T): void;
+    onStart(target: T): void;
     reverseValues(target: T): void;
     onUpdate(target: T, deltaTime: number): boolean;
     onCompleted(target: T): void;
@@ -54,12 +55,12 @@ class TweenSetAction<T> implements Action<T> {
         this.valuesEnd = Object.assign({}, properties);
     }
 
-    public onStart(target: T, resetValue: boolean): void {
-        if (resetValue) {
-            this.valuesStart = {};
-            TweenSetAction.setupProperties(target, this.valuesStart, this.valuesEnd);
-        }
+    public onInitialize(target: T): void {
+        this.valuesStart = {};
+        TweenSetAction.setupProperties(target, this.valuesStart, this.valuesEnd);
     }
+
+    public onStart(target: T): void { }
 
     public reverseValues(target: T): void {
         let temp = this.valuesStart;
@@ -123,19 +124,25 @@ class TweenAction<T> implements Action<T> {
         return start + (end - start) * t;
     }
 
-    public onStart(target: T, resetValue: boolean): void {
+    public onInitialize(target: T): void {
+        this.valuesStart = {};
+        TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.isBy ? TweenAction.byValue : TweenAction.toValue);
+    }
+
+    public onStart(target: T): void {
         this.elapsedTime = 0;
-        if (resetValue) {
-            this.valuesStart = {};
-            if (this.options.onStart) this.options.onStart(target);
-            TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.isBy);
-        }
+        if (this.options.onStart) this.options.onStart(target);
+        if (this.isBy) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
     }
 
     public reverseValues(target: T): void {
-        let temp = this.valuesStart;
-        this.valuesStart = this.valuesEnd;
-        this.valuesEnd = temp;
+        if (this.isBy) {
+            TweenAction.flipProperties(this.valuesEnd);
+        } else {
+            let temp = this.valuesStart;
+            this.valuesStart = this.valuesEnd;
+            this.valuesEnd = temp;
+        }
     }
 
     public onUpdate(target: T, deltaTime: number): boolean {
@@ -143,7 +150,7 @@ class TweenAction<T> implements Action<T> {
         let ratio = this.elapsedTime / this.duration;
         ratio = ratio > 1 ? 1 : ratio;
         const value = this.options.easing(ratio);
-        TweenAction.updateProperties(target, this.valuesStart, this.valuesEnd, value, this.options.progress);
+        TweenAction.updateProperties(target, this.valuesStart, this.valuesEnd, value, this.isBy, this.options.progress);
         if (this.options.onUpdate) this.options.onUpdate(target, ratio);
         return ratio >= 1;
     }
@@ -152,34 +159,68 @@ class TweenAction<T> implements Action<T> {
         if (this.options.onComplete) this.options.onComplete(target);
     }
 
-    public static setupProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, isBy: boolean): void {
+    public static resetProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>): void {
         for (const property in valuesEnd) {
             const startValue = target[property];
             const propType = typeof startValue ?? typeof valuesEnd[property];
 
-            if (propType === 'number') {
-                valuesStart[property] = startValue;
-                if (isBy) valuesEnd[property] += startValue;
-            } else if (propType === 'object') {
+            if (propType === 'object') {
                 if (valuesStart[property] == null) valuesStart[property] = {};
-                TweenAction.setupProperties(startValue, valuesStart[property], valuesEnd[property], isBy);
+                TweenAction.resetProperties(startValue, valuesStart[property], valuesEnd[property]);
+            } else if (propType === 'number') {
+                valuesStart[property] = 0;
             }
         }
     }
 
-    public static updateProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, value: number, interpolation: InterpolationFunction): void {
+    public static setupProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, call: (value: number) => number): void {
+        for (const property in valuesEnd) {
+            const startValue = target[property];
+            const propType = typeof startValue ?? typeof valuesEnd[property];
+
+            if (propType === 'object') {
+                if (valuesStart[property] == null) valuesStart[property] = {};
+                TweenAction.setupProperties(startValue, valuesStart[property], valuesEnd[property], call);
+            } else if (propType === 'number') {
+                valuesStart[property] = call(startValue);
+            }
+        }
+    }
+
+    public static flipProperties<T>(valuesEnd: ConstructorType<T>): void {
+        for (const property in valuesEnd) {
+            const propType = typeof valuesEnd[property];
+
+            if (propType === 'object') {
+                TweenAction.flipProperties(valuesEnd[property]);
+            } else if (propType === 'number') {
+                valuesEnd[property] = -valuesEnd[property];
+            }
+        }
+    }
+
+    public static updateProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, value: number, isBy: boolean, interpolation: InterpolationFunction): void {
         for (const property in valuesEnd) {
             const start = valuesStart[property] || 0;
             let end = valuesEnd[property];
             const propType = typeof end ?? typeof start;
 
-            if (propType === 'number') {
-                target[property] = interpolation(start, end, value);
-            } else if (propType === 'object') {
-                TweenAction.updateProperties(target[property], start, end, value, interpolation);
+            if (propType === 'object') {
+                TweenAction.updateProperties(target[property], start, end, value, isBy, interpolation);
+            } else if (propType === 'number') {
+                let finalValue = interpolation(start, end, value);
+                if (isBy) {
+                    target[property] += finalValue - start;
+                    valuesStart[property] = finalValue;
+                } else {
+                    target[property] = finalValue;
+                }
             }
         }
     }
+
+    private static toValue = (value: number): number => value;
+    private static byValue = (value: number): number => 0;
 }
 
 class DelayAction<T> implements Action<T> {
@@ -190,11 +231,13 @@ class DelayAction<T> implements Action<T> {
         this.duration = duration;
     }
 
-    reverseValues(target: T): void { }
+    onInitialize(target: T): void { }
 
-    onStart(target: T, resetValue: boolean): void {
+    onStart(target: T): void {
         this.elapsedTime = 0;
     }
+
+    reverseValues(target: T): void { }
 
     onUpdate(target: T, deltaTime: number): boolean {
         this.elapsedTime += deltaTime;
@@ -215,9 +258,11 @@ class CallAction<T> implements Action<T> {
         this.argArray = argArray;
     }
 
-    reverseValues(target: T): void { }
+    onInitialize(target: T): void { }
 
-    onStart(target: T, resetValue: boolean): void { }
+    onStart(target: T): void { }
+
+    reverseValues(target: T): void { }
 
     onUpdate(target: T, deltaTime: number): boolean {
         this.callback?.call(this.thisArg, ...this.argArray);
@@ -602,7 +647,8 @@ export class XTween<T> {
     public start(): XTween<T> {
         this._isPlaying = true;
         this._isPaused = false;
-        this._startActions(true);
+        this._intializeActions();
+        this._startActions();
         tweenManager.add(this);
         return this;
     }
@@ -643,12 +689,20 @@ export class XTween<T> {
     }
 
     /**
+     * 初始化所有Action，这是内部函数，请不要外部调用
+     */
+    _intializeActions(): void {
+        if (this.actionList.length > 0)
+            this.actionList[0].onInitialize(this.target);
+    }
+
+    /**
      * 开始所有Action，这是内部函数，请不要外部调用
      */
-    _startActions(resetValue: boolean): void {
+    _startActions(): void {
         this.indexAction = 0;
         if (this.actionList.length > 0)
-            this.actionList[0].onStart(this.target, resetValue);
+            this.actionList[0].onStart(this.target);
     }
 
     /**
@@ -671,8 +725,10 @@ export class XTween<T> {
             action.onCompleted(this.target);
             this.indexAction++;
             let nextAction = this.actionList[this.indexAction];
-            if (nextAction != null)
-                nextAction.onStart(this.target, true);
+            if (nextAction != null) {
+                nextAction.onInitialize(this.target);
+                nextAction.onStart(this.target);
+            }
         }
         return this.indexAction >= this.actionList.length;
     }
@@ -713,16 +769,21 @@ export class XTween<T> {
 
 class SequenceAction<T> implements Action<T> {
     protected readonly tweens: XTween<T>[];
-    protected currentIndex: number;
+    protected currentIndex: number = 0;
 
     public constructor(...tweens: XTween<T>[]) {
         this.tweens = tweens;
     }
 
-    onStart(target: T, resetValue: boolean): void {
+    onInitialize(target: T): void {
+        let tween = this.tweens[this.currentIndex];
+        tween._intializeActions();
+    }
+
+    onStart(target: T): void {
         this.currentIndex = 0;
-        for (let tween of this.tweens)
-            tween._startActions(resetValue);
+        let tween = this.tweens[this.currentIndex];
+        tween._startActions();
     }
 
     reverseValues(target: T): void {
@@ -737,6 +798,11 @@ class SequenceAction<T> implements Action<T> {
             if (!tween._updateActions(deltaTime))
                 break;
             this.currentIndex++;
+            if (this.currentIndex < this.tweens.length) {
+                let nextTween = this.tweens[this.currentIndex];
+                nextTween._intializeActions();
+                nextTween._startActions();
+            }
         }
         return this.currentIndex >= this.tweens.length;
     }
@@ -752,15 +818,20 @@ class ParallelAction<T> implements Action<T> {
         this.tweens = tweens;
     }
 
+    onInitialize(target: T): void {
+        this.updateTweens = Array.from(this.tweens);
+        for (let tween of this.tweens)
+            tween._intializeActions();
+    }
+
+    onStart(target: T): void {
+        for (let tween of this.tweens)
+            tween._startActions();
+    }
+
     reverseValues(target: T): void {
         for (let tween of this.tweens)
             tween._reverseActions();
-    }
-
-    onStart(target: T, resetValue: boolean): void {
-        for (let tween of this.tweens)
-            tween._startActions(resetValue);
-        this.updateTweens = Array.from(this.tweens);
     }
 
     onUpdate(target: T, deltaTime: number): boolean {
@@ -786,20 +857,24 @@ class RepeatAction<T> implements Action<T> {
         this.repeatTween = repeatTween;
     }
 
-    reverseValues(target: T): void {
-        this.repeatTween._reverseActions();
+    onInitialize(target: T): void {
+        this.repeatTween._intializeActions();
     }
 
-    onStart(target: T, resetValue: boolean): void {
+    onStart(target: T): void {
         this.repeatCount = 0;
-        this.repeatTween._startActions(resetValue);
+        this.repeatTween._startActions();
+    }
+
+    reverseValues(target: T): void {
+        this.repeatTween._reverseActions();
     }
 
     onUpdate(target: T, deltaTime: number): boolean {
         if (this.repeatTween._updateActions(deltaTime)) {
             if (this.pingPong)
                 this.repeatTween._reverseActions();
-            this.repeatTween._startActions(false);
+            this.repeatTween._startActions();
             this.repeatCount++;
         }
         return this.repeatCount >= this.repeatTimes;
