@@ -273,8 +273,12 @@ class CallAction<T> implements Action<T> {
 }
 
 class TweenManager {
-    private lastTime: number = Date.now();
+    private lastTime: number;
     private actionGroupList: XTween<UnknownProps>[] = [];
+    public updateTweens = () => {
+        this.lastTime = Date.now();
+        this.updateTweens = this.update.bind(this);
+    };
 
     public add(actionGroup: XTween<UnknownProps>): void {
         this.actionGroupList.push(actionGroup);
@@ -283,19 +287,19 @@ class TweenManager {
     public remove(actionGroup: XTween<UnknownProps>): void {
         let index = this.actionGroupList.indexOf(actionGroup);
         if (index != -1)
-            this.actionGroupList.splice(index, 1);
+            this.actionGroupList[index] = null;
     }
 
     public removeTarget(target: any): void {
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
             if (this.actionGroupList[i].target == target)
-                this.actionGroupList.splice(i, 1);
+                this.actionGroupList[i] = null;
         }
     }
 
     public containTweens(target: any): boolean {
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
-            if (this.actionGroupList[i].target == target)
+            if (this.actionGroupList[i]?.target == target)
                 return true;
         }
         return false;
@@ -305,12 +309,12 @@ class TweenManager {
         this.actionGroupList.length = 0;
     }
 
-    public update(time: number = Date.now()): void {
+    private update(time: number = Date.now()): void {
         let deltaTime = time - this.lastTime;
         this.lastTime = time;
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
             let actionGroup = this.actionGroupList[i];
-            if (actionGroup._updateActions(deltaTime))
+            if (actionGroup == null || actionGroup._updateActions(deltaTime))
                 this.actionGroupList.splice(i, 1);
         }
     }
@@ -599,7 +603,7 @@ export class XTween<T> {
      * @param argArray 函数的参数
      * @returns 返回当前补间动画实例
      */
-    public call(callback: Function, thisArg?: any, ...argArray: any[]): XTween<T> {
+    public call<F extends (...args: any) => any>(callback: F, thisArg?: any, ...argArray: Parameters<F>): XTween<T> {
         const action = new CallAction(callback, thisArg, argArray);
         this.actionList.push(action);
         return this;
@@ -645,6 +649,7 @@ export class XTween<T> {
      * @returns 返回当前补间动画实例
      */
     public start(): XTween<T> {
+        if (this.isPlaying || this.isPaused) return this;
         this._isPlaying = true;
         this._isPaused = false;
         this._intializeActions();
@@ -682,6 +687,7 @@ export class XTween<T> {
      * @returns 返回当前补间动画实例
      */
     public stop(): XTween<T> {
+        if (!this.isPaused && !this.isPlaying) return this;
         this._isPlaying = false;
         this._isPaused = false;
         tweenManager.remove(this);
@@ -716,12 +722,13 @@ export class XTween<T> {
 
     /**
      * 更新所有Action。这是内部函数，请不要外部调用
+     * @returns 返回true表示执行所有Action完毕。false表示下一帧继续。
      */
     _updateActions(deltaTime: number): boolean {
-        while (this.indexAction < this.actionList.length) {
+        if (this.indexAction < this.actionList.length) {
             let action = this.actionList[this.indexAction];
             if (!action.onUpdate(this.target, deltaTime))
-                break;
+                return false;
             action.onCompleted(this.target);
             this.indexAction++;
             let nextAction = this.actionList[this.indexAction];
@@ -763,7 +770,7 @@ export class XTween<T> {
      * setInterval(XTween.updateTweens, 1);
      */
     public static updateTweens(): void {
-        tweenManager.update();
+        tweenManager.updateTweens();
     }
 }
 
@@ -793,10 +800,10 @@ class SequenceAction<T> implements Action<T> {
     }
 
     onUpdate(target: T, deltaTime: number): boolean {
-        while (this.currentIndex < this.tweens.length) {
+        if (this.currentIndex < this.tweens.length) {
             let tween = this.tweens[this.currentIndex];
             if (!tween._updateActions(deltaTime))
-                break;
+                return false;
             this.currentIndex++;
             if (this.currentIndex < this.tweens.length) {
                 let nextTween = this.tweens[this.currentIndex];

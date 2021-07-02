@@ -1,13 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.xtween = exports.XTween = void 0;
 class TweenSetAction {
     constructor(properties) {
         this.valuesEnd = Object.assign({}, properties);
     }
-    onStart(target, resetValue) {
-        if (resetValue) {
-            this.valuesStart = {};
-            TweenSetAction.setupProperties(target, this.valuesStart, this.valuesEnd);
-        }
+    onInitialize(target) {
+        this.valuesStart = {};
+        TweenSetAction.setupProperties(target, this.valuesStart, this.valuesEnd);
     }
+    onStart(target) { }
     reverseValues(target) {
         let temp = this.valuesStart;
         this.valuesStart = this.valuesEnd;
@@ -62,26 +64,33 @@ class TweenAction {
     static progress(start, end, t) {
         return start + (end - start) * t;
     }
-    onStart(target, resetValue) {
+    onInitialize(target) {
+        this.valuesStart = {};
+        TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.isBy ? TweenAction.byValue : TweenAction.toValue);
+    }
+    onStart(target) {
         this.elapsedTime = 0;
-        if (resetValue) {
-            this.valuesStart = {};
-            if (this.options.onStart)
-                this.options.onStart(target);
-            TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.isBy);
-        }
+        if (this.options.onStart)
+            this.options.onStart(target);
+        if (this.isBy)
+            TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
     }
     reverseValues(target) {
-        let temp = this.valuesStart;
-        this.valuesStart = this.valuesEnd;
-        this.valuesEnd = temp;
+        if (this.isBy) {
+            TweenAction.flipProperties(this.valuesEnd);
+        }
+        else {
+            let temp = this.valuesStart;
+            this.valuesStart = this.valuesEnd;
+            this.valuesEnd = temp;
+        }
     }
     onUpdate(target, deltaTime) {
         this.elapsedTime += deltaTime;
         let ratio = this.elapsedTime / this.duration;
         ratio = ratio > 1 ? 1 : ratio;
         const value = this.options.easing(ratio);
-        TweenAction.updateProperties(target, this.valuesStart, this.valuesEnd, value, this.options.progress);
+        TweenAction.updateProperties(target, this.valuesStart, this.valuesEnd, value, this.isBy, this.options.progress);
         if (this.options.onUpdate)
             this.options.onUpdate(target, ratio);
         return ratio >= 1;
@@ -90,46 +99,80 @@ class TweenAction {
         if (this.options.onComplete)
             this.options.onComplete(target);
     }
-    static setupProperties(target, valuesStart, valuesEnd, isBy) {
+    static resetProperties(target, valuesStart, valuesEnd) {
         var _a;
         for (const property in valuesEnd) {
             const startValue = target[property];
             const propType = (_a = typeof startValue) !== null && _a !== void 0 ? _a : typeof valuesEnd[property];
-            if (propType === 'number') {
-                valuesStart[property] = startValue;
-                if (isBy)
-                    valuesEnd[property] += startValue;
-            }
-            else if (propType === 'object') {
+            if (propType === 'object') {
                 if (valuesStart[property] == null)
                     valuesStart[property] = {};
-                TweenAction.setupProperties(startValue, valuesStart[property], valuesEnd[property], isBy);
+                TweenAction.resetProperties(startValue, valuesStart[property], valuesEnd[property]);
+            }
+            else if (propType === 'number') {
+                valuesStart[property] = 0;
             }
         }
     }
-    static updateProperties(target, valuesStart, valuesEnd, value, interpolation) {
+    static setupProperties(target, valuesStart, valuesEnd, call) {
+        var _a;
+        for (const property in valuesEnd) {
+            const startValue = target[property];
+            const propType = (_a = typeof startValue) !== null && _a !== void 0 ? _a : typeof valuesEnd[property];
+            if (propType === 'object') {
+                if (valuesStart[property] == null)
+                    valuesStart[property] = {};
+                TweenAction.setupProperties(startValue, valuesStart[property], valuesEnd[property], call);
+            }
+            else if (propType === 'number') {
+                valuesStart[property] = call(startValue);
+            }
+        }
+    }
+    static flipProperties(valuesEnd) {
+        for (const property in valuesEnd) {
+            const propType = typeof valuesEnd[property];
+            if (propType === 'object') {
+                TweenAction.flipProperties(valuesEnd[property]);
+            }
+            else if (propType === 'number') {
+                valuesEnd[property] = -valuesEnd[property];
+            }
+        }
+    }
+    static updateProperties(target, valuesStart, valuesEnd, value, isBy, interpolation) {
         var _a;
         for (const property in valuesEnd) {
             const start = valuesStart[property] || 0;
             let end = valuesEnd[property];
             const propType = (_a = typeof end) !== null && _a !== void 0 ? _a : typeof start;
-            if (propType === 'number') {
-                target[property] = interpolation(start, end, value);
+            if (propType === 'object') {
+                TweenAction.updateProperties(target[property], start, end, value, isBy, interpolation);
             }
-            else if (propType === 'object') {
-                TweenAction.updateProperties(target[property], start, end, value, interpolation);
+            else if (propType === 'number') {
+                let finalValue = interpolation(start, end, value);
+                if (isBy) {
+                    target[property] += finalValue - start;
+                    valuesStart[property] = finalValue;
+                }
+                else {
+                    target[property] = finalValue;
+                }
             }
         }
     }
 }
+TweenAction.toValue = (value) => value;
+TweenAction.byValue = (value) => 0;
 class DelayAction {
     constructor(duration) {
         this.duration = duration;
     }
-    reverseValues(target) { }
-    onStart(target, resetValue) {
+    onInitialize(target) { }
+    onStart(target) {
         this.elapsedTime = 0;
     }
+    reverseValues(target) { }
     onUpdate(target, deltaTime) {
         this.elapsedTime += deltaTime;
         return this.elapsedTime >= this.duration;
@@ -142,8 +185,9 @@ class CallAction {
         this.thisArg = thisArg;
         this.argArray = argArray;
     }
+    onInitialize(target) { }
+    onStart(target) { }
     reverseValues(target) { }
-    onStart(target, resetValue) { }
     onUpdate(target, deltaTime) {
         var _a;
         (_a = this.callback) === null || _a === void 0 ? void 0 : _a.call(this.thisArg, ...this.argArray);
@@ -153,8 +197,11 @@ class CallAction {
 }
 class TweenManager {
     constructor() {
-        this.lastTime = Date.now();
         this.actionGroupList = [];
+        this.updateTweens = () => {
+            this.lastTime = Date.now();
+            this.updateTweens = this.update.bind(this);
+        };
     }
     add(actionGroup) {
         this.actionGroupList.push(actionGroup);
@@ -162,17 +209,18 @@ class TweenManager {
     remove(actionGroup) {
         let index = this.actionGroupList.indexOf(actionGroup);
         if (index != -1)
-            this.actionGroupList.splice(index, 1);
+            this.actionGroupList[index] = null;
     }
     removeTarget(target) {
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
             if (this.actionGroupList[i].target == target)
-                this.actionGroupList.splice(i, 1);
+                this.actionGroupList[i] = null;
         }
     }
     containTweens(target) {
+        var _a;
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
-            if (this.actionGroupList[i].target == target)
+            if (((_a = this.actionGroupList[i]) === null || _a === void 0 ? void 0 : _a.target) == target)
                 return true;
         }
         return false;
@@ -185,7 +233,7 @@ class TweenManager {
         this.lastTime = time;
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
             let actionGroup = this.actionGroupList[i];
-            if (actionGroup._updateActions(deltaTime))
+            if (actionGroup == null || actionGroup._updateActions(deltaTime))
                 this.actionGroupList.splice(i, 1);
         }
     }
@@ -398,7 +446,7 @@ const TweenEasing = {
  *      .start();
  * ```
  */
-export class XTween {
+class XTween {
     /**
      * 创建一个补间动画
      * @param target 要补间的目标对象
@@ -504,9 +552,12 @@ export class XTween {
      * @returns 返回当前补间动画实例
      */
     start() {
+        if (this.isPlaying || this.isPaused)
+            return this;
         this._isPlaying = true;
         this._isPaused = false;
-        this._startActions(true);
+        this._intializeActions();
+        this._startActions();
         tweenManager.add(this);
         return this;
     }
@@ -539,18 +590,27 @@ export class XTween {
      * @returns 返回当前补间动画实例
      */
     stop() {
+        if (!this.isPaused && !this.isPlaying)
+            return this;
         this._isPlaying = false;
         this._isPaused = false;
         tweenManager.remove(this);
         return this;
     }
     /**
+     * 初始化所有Action，这是内部函数，请不要外部调用
+     */
+    _intializeActions() {
+        if (this.actionList.length > 0)
+            this.actionList[0].onInitialize(this.target);
+    }
+    /**
      * 开始所有Action，这是内部函数，请不要外部调用
      */
-    _startActions(resetValue) {
+    _startActions() {
         this.indexAction = 0;
         if (this.actionList.length > 0)
-            this.actionList[0].onStart(this.target, resetValue);
+            this.actionList[0].onStart(this.target);
     }
     /**
      * 翻转所有Action，这是内部函数，请不要外部调用
@@ -562,17 +622,20 @@ export class XTween {
     }
     /**
      * 更新所有Action。这是内部函数，请不要外部调用
+     * @returns 返回true表示执行所有Action完毕。false表示下一帧继续。
      */
     _updateActions(deltaTime) {
-        while (this.indexAction < this.actionList.length) {
+        if (this.indexAction < this.actionList.length) {
             let action = this.actionList[this.indexAction];
             if (!action.onUpdate(this.target, deltaTime))
-                break;
+                return false;
             action.onCompleted(this.target);
             this.indexAction++;
             let nextAction = this.actionList[this.indexAction];
-            if (nextAction != null)
-                nextAction.onStart(this.target, true);
+            if (nextAction != null) {
+                nextAction.onInitialize(this.target);
+                nextAction.onStart(this.target);
+            }
         }
         return this.indexAction >= this.actionList.length;
     }
@@ -603,18 +666,24 @@ export class XTween {
      * setInterval(XTween.updateTweens, 1);
      */
     static updateTweens() {
-        tweenManager.update();
+        tweenManager.updateTweens();
     }
 }
+exports.XTween = XTween;
 XTween.Easing = TweenEasing;
 class SequenceAction {
     constructor(...tweens) {
+        this.currentIndex = 0;
         this.tweens = tweens;
     }
-    onStart(target, resetValue) {
+    onInitialize(target) {
+        let tween = this.tweens[this.currentIndex];
+        tween._intializeActions();
+    }
+    onStart(target) {
         this.currentIndex = 0;
-        for (let tween of this.tweens)
-            tween._startActions(resetValue);
+        let tween = this.tweens[this.currentIndex];
+        tween._startActions();
     }
     reverseValues(target) {
         this.tweens.reverse();
@@ -622,11 +691,16 @@ class SequenceAction {
             tween._reverseActions();
     }
     onUpdate(target, deltaTime) {
-        while (this.currentIndex < this.tweens.length) {
+        if (this.currentIndex < this.tweens.length) {
             let tween = this.tweens[this.currentIndex];
             if (!tween._updateActions(deltaTime))
-                break;
+                return false;
             this.currentIndex++;
+            if (this.currentIndex < this.tweens.length) {
+                let nextTween = this.tweens[this.currentIndex];
+                nextTween._intializeActions();
+                nextTween._startActions();
+            }
         }
         return this.currentIndex >= this.tweens.length;
     }
@@ -636,14 +710,18 @@ class ParallelAction {
     constructor(...tweens) {
         this.tweens = tweens;
     }
+    onInitialize(target) {
+        this.updateTweens = Array.from(this.tweens);
+        for (let tween of this.tweens)
+            tween._intializeActions();
+    }
+    onStart(target) {
+        for (let tween of this.tweens)
+            tween._startActions();
+    }
     reverseValues(target) {
         for (let tween of this.tweens)
             tween._reverseActions();
-    }
-    onStart(target, resetValue) {
-        for (let tween of this.tweens)
-            tween._startActions(resetValue);
-        this.updateTweens = Array.from(this.tweens);
     }
     onUpdate(target, deltaTime) {
         for (let i = this.updateTweens.length - 1; i >= 0; i--) {
@@ -662,25 +740,29 @@ class RepeatAction {
         this.pingPong = pingPong;
         this.repeatTween = repeatTween;
     }
+    onInitialize(target) {
+        this.repeatTween._intializeActions();
+    }
+    onStart(target) {
+        this.repeatCount = 0;
+        this.repeatTween._startActions();
+    }
     reverseValues(target) {
         this.repeatTween._reverseActions();
-    }
-    onStart(target, resetValue) {
-        this.repeatCount = 0;
-        this.repeatTween._startActions(resetValue);
     }
     onUpdate(target, deltaTime) {
         if (this.repeatTween._updateActions(deltaTime)) {
             if (this.pingPong)
                 this.repeatTween._reverseActions();
-            this.repeatTween._startActions(false);
+            this.repeatTween._startActions();
             this.repeatCount++;
         }
         return this.repeatCount >= this.repeatTimes;
     }
     onCompleted(target) { }
 }
-export function xtween(target) {
+function xtween(target) {
     return new XTween(target);
 }
+exports.xtween = xtween;
 //# sourceMappingURL=XTween.js.map
