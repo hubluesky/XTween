@@ -521,7 +521,7 @@ class XTween {
      * @returns 返回当前补间动画实例
      */
     sequence(...tweens) {
-        let action = new SequenceAction(...tweens);
+        let action = new SequenceAction(tweens);
         this.actionList.push(action);
         return this;
     }
@@ -531,7 +531,7 @@ class XTween {
      * @returns 返回当前补间动画实例
      */
     parallel(...tweens) {
-        let action = new ParallelAction(...tweens);
+        let action = new ParallelAction(tweens);
         this.actionList.push(action);
         return this;
     }
@@ -544,6 +544,27 @@ class XTween {
      */
     repeat(repeatTimes, pingPong, repeatTween) {
         let action = new RepeatAction(repeatTimes, pingPong, repeatTween);
+        this.actionList.push(action);
+        return this;
+    }
+    /**
+     * 在当前补间动作加入一个无限重复执行的Tween
+     * @param pingPong 是否来回缓动
+     * @param repeatTween 需要被重复执行的Tween
+     * @returns 返回当前补间动画实例
+     */
+    repeatForever(pingPong, repeatTween) {
+        let action = new RepeatAction(Infinity, pingPong, repeatTween);
+        this.actionList.push(action);
+        return this;
+    }
+    /**
+     * 在当前补间动作加入一个Tween
+     * @param thenTween 要插入执行的Tween
+     * @returns 返回当前补间动画实例
+     */
+    then(thenTween) {
+        let action = new ThenAction(thenTween);
         this.actionList.push(action);
         return this;
     }
@@ -671,10 +692,28 @@ class XTween {
 }
 exports.XTween = XTween;
 XTween.Easing = TweenEasing;
+class ThenAction {
+    constructor(tween) {
+        this.tween = tween;
+    }
+    onInitialize(target) {
+        this.tween._intializeActions();
+    }
+    onStart(target) {
+        this.tween._startActions();
+    }
+    reverseValues(target) {
+        this.tween._reverseActions();
+    }
+    onUpdate(target, deltaTime) {
+        return this.tween._updateActions(deltaTime);
+    }
+    onCompleted(target) { }
+}
 class SequenceAction {
-    constructor(...tweens) {
-        this.currentIndex = 0;
+    constructor(tweens) {
         this.tweens = tweens;
+        this.currentIndex = 0;
     }
     onInitialize(target) {
         let tween = this.tweens[this.currentIndex];
@@ -707,7 +746,7 @@ class SequenceAction {
     onCompleted(target) { }
 }
 class ParallelAction {
-    constructor(...tweens) {
+    constructor(tweens) {
         this.tweens = tweens;
     }
     onInitialize(target) {
@@ -734,8 +773,10 @@ class ParallelAction {
 }
 class RepeatAction {
     constructor(repeatTimes, pingPong, repeatTween) {
+        this.repeatTimes = repeatTimes;
+        this.pingPong = pingPong;
+        this.repeatTween = repeatTween;
         this.repeatCount = 0;
-        this.pingPong = false;
         this.repeatTimes = repeatTimes;
         this.pingPong = pingPong;
         this.repeatTween = repeatTween;

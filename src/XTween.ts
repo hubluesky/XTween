@@ -615,7 +615,7 @@ export class XTween<T> {
      * @returns 返回当前补间动画实例
      */
     public sequence(...tweens: XTween<any>[]): XTween<T> {
-        let action = new SequenceAction(...tweens);
+        let action = new SequenceAction(tweens);
         this.actionList.push(action);
         return this;
     }
@@ -626,7 +626,7 @@ export class XTween<T> {
      * @returns 返回当前补间动画实例
      */
     public parallel(...tweens: XTween<any>[]): XTween<T> {
-        let action = new ParallelAction(...tweens);
+        let action = new ParallelAction(tweens);
         this.actionList.push(action);
         return this;
     }
@@ -640,6 +640,29 @@ export class XTween<T> {
      */
     public repeat(repeatTimes: number, pingPong: boolean, repeatTween: XTween<any>): XTween<T> {
         let action = new RepeatAction(repeatTimes, pingPong, repeatTween);
+        this.actionList.push(action);
+        return this;
+    }
+
+    /**
+     * 在当前补间动作加入一个无限重复执行的Tween
+     * @param pingPong 是否来回缓动
+     * @param repeatTween 需要被重复执行的Tween
+     * @returns 返回当前补间动画实例
+     */
+    public repeatForever(pingPong: boolean, repeatTween: XTween<any>): XTween<T> {
+        let action = new RepeatAction(Infinity, pingPong, repeatTween);
+        this.actionList.push(action);
+        return this;
+    }
+
+    /**
+     * 在当前补间动作加入一个Tween
+     * @param thenTween 要插入执行的Tween
+     * @returns 返回当前补间动画实例
+     */
+    public then(thenTween: XTween<any>): XTween<T> {
+        let action = new ThenAction(thenTween);
         this.actionList.push(action);
         return this;
     }
@@ -774,13 +797,33 @@ export class XTween<T> {
     }
 }
 
+class ThenAction<T> implements Action<T> {
+
+    public constructor(readonly tween: XTween<T>) { }
+
+    onInitialize(target: T): void {
+        this.tween._intializeActions();
+    }
+
+    onStart(target: T): void {
+        this.tween._startActions();
+    }
+
+    reverseValues(target: T): void {
+        this.tween._reverseActions();
+    }
+
+    onUpdate(target: T, deltaTime: number): boolean {
+        return this.tween._updateActions(deltaTime);
+    }
+
+    onCompleted(target: T): void { }
+}
+
 class SequenceAction<T> implements Action<T> {
-    protected readonly tweens: XTween<T>[];
     protected currentIndex: number = 0;
 
-    public constructor(...tweens: XTween<T>[]) {
-        this.tweens = tweens;
-    }
+    public constructor(readonly tweens: XTween<T>[]) { }
 
     onInitialize(target: T): void {
         let tween = this.tweens[this.currentIndex];
@@ -818,12 +861,9 @@ class SequenceAction<T> implements Action<T> {
 }
 
 class ParallelAction<T> implements Action<T> {
-    protected readonly tweens: XTween<T>[];
     protected updateTweens: XTween<T>[];
 
-    public constructor(...tweens: XTween<T>[]) {
-        this.tweens = tweens;
-    }
+    public constructor(readonly tweens: XTween<T>[]) { }
 
     onInitialize(target: T): void {
         this.updateTweens = Array.from(this.tweens);
@@ -853,12 +893,9 @@ class ParallelAction<T> implements Action<T> {
 }
 
 class RepeatAction<T> implements Action<T> {
-    protected readonly repeatTimes: number;
-    protected readonly repeatTween: XTween<T>;
     protected repeatCount: number = 0;
-    protected pingPong: boolean = false;
 
-    public constructor(repeatTimes: number, pingPong: boolean, repeatTween: XTween<T>) {
+    public constructor(readonly repeatTimes: number, readonly pingPong: boolean, readonly repeatTween: XTween<T>) {
         this.repeatTimes = repeatTimes;
         this.pingPong = pingPong;
         this.repeatTween = repeatTween;
