@@ -292,7 +292,7 @@ class TweenManager {
 
     public removeTarget(target: any): void {
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
-            if (this.actionGroupList[i].target == target)
+            if (this.actionGroupList[i]?.target == target)
                 this.actionGroupList[i] = null;
         }
     }
@@ -764,6 +764,45 @@ export class XTween<T> {
     }
 
     //----------------------------------------------------------------------------------------------------------------------------
+    /**
+     * 创建一个重复执行的Tween
+     * @param repeatTimes 重复次数，无限次数使用Infinity
+     * @param pingPong 是否来回缓动
+     * @param repeatTween 需要被重复执行的Tween
+     * @returns 返回补间动画实例
+     */
+    public static repeat<T>(repeatTimes: number, pingPong: boolean, repeatTween: XTween<T>): XTween<T> {
+        return new XTween(repeatTween.target).repeat(repeatTimes, pingPong, repeatTween);
+    }
+
+    /**
+     * 创建一个无限重复执行的Tween
+     * @param pingPong 是否来回缓动
+     * @param repeatTween 需要被重复执行的Tween
+     * @returns 返回补间动画实例
+     */
+    public static repeatForever<T>(pingPong: boolean, repeatTween: XTween<T>): XTween<T> {
+        return new XTween(repeatTween.target).repeatForever(pingPong, repeatTween);
+    }
+
+    /**
+     * 创建一个按顺序执行的Tween集合
+     * @param tweens Tween集合，每个Tween的target类型都可以不相同。
+     * @returns 返回补间动画实例
+     */
+    public static sequence(...tweens: XTween<any>[]): XTween<any> {
+        return new XTween({}).sequence(...tweens);
+    }
+
+    /**
+     * 创建一个同时执行的Tween集合
+     * @param tweens Tween集合，每个Tween的target类型都可以不相同。
+     * @returns 返回补间动画实例
+     */
+    public static parallel(...tweens: XTween<any>[]): XTween<any> {
+        return new XTween({}).parallel(...tweens);
+    }
+
     /**
      * 删除所有的Tween
      */
