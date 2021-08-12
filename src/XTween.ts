@@ -7,6 +7,7 @@ type OmitType<Base, Type> = KeyPartial<Base, AllowedNames<Base, Type>>;
 type ConstructorType<T> = OmitType<T, Function>;
 
 type InterpolationFunction = (start: number, end: number, ratio: number) => number;
+type LerpFunction<T> = (target: T, property: string, valuesStart: ConstructorType<T>, start: number, end: number, ratio: number, interpolation: InterpolationFunction) => void;
 type EasingFunction = (amount: number) => number;
 
 /**
@@ -109,11 +110,15 @@ class TweenAction<T> implements Action<T> {
     private readonly duration: number;
     private readonly options: ITweenOption<T> = {};
     private elapsedTime: number;
-    private isBy: boolean;
+    private lerpFunction: LerpFunction<T>;
+    private setupValueFunction: (value: number) => number;
+    private reverseValuesFunction: (self: TweenAction<T>) => void;
 
     public constructor(duration: number, isBy: boolean, properties: ConstructorType<T>, options?: ITweenOption<T>) {
         this.duration = duration;
-        this.isBy = isBy;
+        this.lerpFunction = isBy ? TweenAction.byLerp : TweenAction.toLerp;
+        this.setupValueFunction = isBy ? TweenAction.byValue : TweenAction.toValue;
+        this.reverseValuesFunction = isBy ? TweenAction.reverseByValues : TweenAction.reverseToValues;
         this.valuesEnd = Object.assign({}, properties);
         Object.assign(this.options, options);
         if (options.easing == null) this.options.easing = XTween.Easing.Linear.None;
@@ -126,23 +131,17 @@ class TweenAction<T> implements Action<T> {
 
     public onInitialize(target: T): void {
         this.valuesStart = {};
-        TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.isBy ? TweenAction.byValue : TweenAction.toValue);
+        TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.setupValueFunction);
     }
 
     public onStart(target: T): void {
         this.elapsedTime = 0;
         if (this.options.onStart) this.options.onStart(target);
-        if (this.isBy) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
+        if (this.setupValueFunction == TweenAction.byValue) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
     }
 
     public reverseValues(target: T): void {
-        if (this.isBy) {
-            TweenAction.flipProperties(this.valuesEnd);
-        } else {
-            let temp = this.valuesStart;
-            this.valuesStart = this.valuesEnd;
-            this.valuesEnd = temp;
-        }
+        this.reverseValuesFunction(this);
     }
 
     public onUpdate(target: T, deltaTime: number): boolean {
@@ -150,7 +149,7 @@ class TweenAction<T> implements Action<T> {
         let ratio = this.elapsedTime / this.duration;
         ratio = ratio > 1 ? 1 : ratio;
         const value = this.options.easing(ratio);
-        TweenAction.updateProperties(target, this.valuesStart, this.valuesEnd, value, this.isBy, this.options.progress);
+        TweenAction.updateProperties(target, this.valuesStart, this.valuesEnd, value, this.lerpFunction, this.options.progress);
         if (this.options.onUpdate) this.options.onUpdate(target, ratio);
         return ratio >= 1;
     }
@@ -199,28 +198,40 @@ class TweenAction<T> implements Action<T> {
         }
     }
 
-    public static updateProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, value: number, isBy: boolean, interpolation: InterpolationFunction): void {
+    public static updateProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, ratio: number, lerpFunc: LerpFunction<T>, interpolation: InterpolationFunction): void {
         for (const property in valuesEnd) {
-            const start = valuesStart[property] || 0;
+            let start = valuesStart[property] || 0;
             let end = valuesEnd[property];
             const propType = typeof end ?? typeof start;
 
             if (propType === 'object') {
-                TweenAction.updateProperties(target[property], start, end, value, isBy, interpolation);
+                TweenAction.updateProperties(target[property], start, end, ratio, lerpFunc, interpolation);
             } else if (propType === 'number') {
-                let finalValue = interpolation(start, end, value);
-                if (isBy) {
-                    target[property] += finalValue - start;
-                    valuesStart[property] = finalValue;
-                } else {
-                    target[property] = finalValue;
-                }
+                lerpFunc(target, property, valuesStart, start, end, ratio, interpolation);
             }
         }
     }
 
     private static toValue = (value: number): number => value;
     private static byValue = (value: number): number => 0;
+    private static reverseByValues<T>(self: TweenAction<T>): void {
+        TweenAction.flipProperties(self.valuesEnd);
+    }
+
+    private static reverseToValues<T>(self: TweenAction<T>): void {
+        let temp = self.valuesStart;
+        self.valuesStart = self.valuesEnd;
+        self.valuesEnd = temp;
+    }
+    private static toLerp = function <T>(target: T, property: string, valuesStart: ConstructorType<T>, start: number, end: number, ratio: number, interpolation: InterpolationFunction) {
+        let finalValue = interpolation(start, end, ratio);
+        target[property] = finalValue;
+    }
+    private static byLerp = function <T>(target: T, property: string, valuesStart: ConstructorType<T>, start: number, end: number, ratio: number, interpolation: InterpolationFunction) {
+        let finalValue = interpolation(0, end, ratio);
+        target[property] += finalValue - start;
+        valuesStart[property] = finalValue;
+    }
 }
 
 class DelayAction<T> implements Action<T> {
@@ -312,9 +323,10 @@ class TweenManager {
     private update(time: number = Date.now()): void {
         let deltaTime = time - this.lastTime;
         this.lastTime = time;
+
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
             let actionGroup = this.actionGroupList[i];
-            if (actionGroup == null || actionGroup._updateActions(deltaTime))
+            if (actionGroup == null || actionGroup._updateActions(10))
                 this.actionGroupList.splice(i, 1);
         }
     }
