@@ -1,13 +1,18 @@
+[![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/ **organization/repository** )
+
 # XTween
+
 这是一个TypeScript的补间动画
- * 支持对象的number属性
- * 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。
- * 支持每一个动作进行onStart, onUpdate, onComplete事件回调。
- * 支持泛型参数推导。可以对要补间的动画参数进行语法检查和补全。
- * 支持连续拼接动作
- * 支持延迟初始化属性，即每一个Action的初始值都是等上一个Action执行完后再开始获得的
+
+* 支持对象的number属性
+* 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。
+* 支持每一个动作进行onStart, onUpdate, onComplete事件回调。
+* 支持泛型参数推导。可以对要补间的动画参数进行语法检查和补全。
+* 支持连续拼接动作
+* 支持延迟初始化属性，即每一个Action的初始值都是等上一个Action执行完后再开始获得的
 
 示例：
+
 ```ts
 // 注意使用时需要每帧更新一下
 setInterval(XTween.updateTweens, 1);
