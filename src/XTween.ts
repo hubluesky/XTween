@@ -326,7 +326,7 @@ class TweenManager {
 
         for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
             let actionGroup = this.actionGroupList[i];
-            if (actionGroup == null || actionGroup._updateActions(10))
+            if (actionGroup == null || actionGroup._updateActions(deltaTime))
                 this.actionGroupList.splice(i, 1);
         }
     }
