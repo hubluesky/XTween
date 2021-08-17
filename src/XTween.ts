@@ -285,49 +285,57 @@ class CallAction<T> implements Action<T> {
 
 class TweenManager {
     private lastTime: number;
-    private actionGroupList: XTween<UnknownProps>[] = [];
+    private tweenList: XTween<UnknownProps>[] = [];
     public updateTweens = () => {
         this.lastTime = Date.now();
         this.updateTweens = this.update.bind(this);
     };
 
-    public add(actionGroup: XTween<UnknownProps>): void {
-        this.actionGroupList.push(actionGroup);
+    public add(tween: XTween<UnknownProps>): void {
+        this.tweenList.push(tween);
     }
 
-    public remove(actionGroup: XTween<UnknownProps>): void {
-        let index = this.actionGroupList.indexOf(actionGroup);
+    public remove(tween: XTween<UnknownProps>): void {
+        let index = this.tweenList.indexOf(tween);
         if (index != -1)
-            this.actionGroupList[index] = null;
+            this.tweenList[index] = null;
     }
 
     public removeTarget(target: any): void {
-        for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
-            if (this.actionGroupList[i]?.target == target)
-                this.actionGroupList[i] = null;
+        for (let i = this.tweenList.length - 1; i >= 0; i--) {
+            if (this.tweenList[i]?.target == target) {
+                this.tweenList[i]._clear();
+                this.tweenList[i] = null;
+            }
         }
     }
 
     public containTweens(target: any): boolean {
-        for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
-            if (this.actionGroupList[i]?.target == target)
+        for (let i = this.tweenList.length - 1; i >= 0; i--) {
+            if (this.tweenList[i]?.target == target)
                 return true;
         }
         return false;
     }
 
     public removeAll(): void {
-        this.actionGroupList.length = 0;
+        for (let tween of this.tweenList)
+            tween?._clear();
+        this.tweenList.length = 0;
     }
 
     private update(time: number = Date.now()): void {
         let deltaTime = time - this.lastTime;
         this.lastTime = time;
 
-        for (let i = this.actionGroupList.length - 1; i >= 0; i--) {
-            let actionGroup = this.actionGroupList[i];
-            if (actionGroup == null || actionGroup._updateActions(deltaTime))
-                this.actionGroupList.splice(i, 1);
+        for (let i = this.tweenList.length - 1; i >= 0; i--) {
+            let tween = this.tweenList[i];
+            if (tween == null)
+                this.tweenList.splice(i, 1);
+            else if (tween._updateActions(deltaTime)) {
+                tween._clear();
+                this.tweenList.splice(i, 1);
+            }
         }
     }
 }
@@ -547,6 +555,8 @@ export class XTween<T> {
     public readonly target: T;
     private readonly actionList: Action<T>[] = [];
     private indexAction: number;
+    private timeScale: number = 1;
+    private onFinallyFunc: (isCompleted: boolean) => void;
     private _isPlaying = false;
     private _isPaused = false;
     public get isPlaying() { return this._isPlaying; }
@@ -558,6 +568,15 @@ export class XTween<T> {
      */
     public constructor(target: T) {
         this.target = target;
+    }
+
+    /**
+     * 设置时间缩放，默认是1
+     * @param timeScale 时间缩放比例
+     */
+    public setTimeScale(timeScale: number): this {
+        this.timeScale = timeScale;
+        return this;
     }
 
     /**
@@ -602,7 +621,7 @@ export class XTween<T> {
      * @param duration 补间时长，单位毫秒
      * @returns 返回当前补间动画实例
      */
-    public delay(duration: number): XTween<T> {
+    public delay(duration: number): this {
         const action = new DelayAction(duration);
         this.actionList.push(action);
         return this;
@@ -615,7 +634,7 @@ export class XTween<T> {
      * @param argArray 函数的参数
      * @returns 返回当前补间动画实例
      */
-    public call<F extends (...args: any) => any>(callback: F, thisArg?: any, ...argArray: Parameters<F>): XTween<T> {
+    public call<F extends (...args: any) => any>(callback: F, thisArg?: any, ...argArray: Parameters<F>): this {
         const action = new CallAction(callback, thisArg, argArray);
         this.actionList.push(action);
         return this;
@@ -626,7 +645,7 @@ export class XTween<T> {
      * @param tweens Tween集合，该集合的Tween的target不需要与当前的target类型相同，每个Tween的target类型都可以不相同。
      * @returns 返回当前补间动画实例
      */
-    public sequence(...tweens: XTween<any>[]): XTween<T> {
+    public sequence(...tweens: XTween<any>[]): this {
         let action = new SequenceAction(tweens);
         this.actionList.push(action);
         return this;
@@ -637,7 +656,7 @@ export class XTween<T> {
      * @param tweens Tween集合，该集合的Tween的target不需要与当前的target类型相同，每个Tween的target类型都可以不相同。
      * @returns 返回当前补间动画实例
      */
-    public parallel(...tweens: XTween<any>[]): XTween<T> {
+    public parallel(...tweens: XTween<any>[]): this {
         let action = new ParallelAction(tweens);
         this.actionList.push(action);
         return this;
@@ -650,7 +669,7 @@ export class XTween<T> {
      * @param repeatTween 需要被重复执行的Tween
      * @returns 返回当前补间动画实例
      */
-    public repeat(repeatTimes: number, pingPong: boolean, repeatTween: XTween<any>): XTween<T> {
+    public repeat(repeatTimes: number, pingPong: boolean, repeatTween: XTween<any>): this {
         let action = new RepeatAction(repeatTimes, pingPong, repeatTween);
         this.actionList.push(action);
         return this;
@@ -662,7 +681,7 @@ export class XTween<T> {
      * @param repeatTween 需要被重复执行的Tween
      * @returns 返回当前补间动画实例
      */
-    public repeatForever(pingPong: boolean, repeatTween: XTween<any>): XTween<T> {
+    public repeatForever(pingPong: boolean, repeatTween: XTween<any>): this {
         let action = new RepeatAction(Infinity, pingPong, repeatTween);
         this.actionList.push(action);
         return this;
@@ -673,7 +692,7 @@ export class XTween<T> {
      * @param thenTween 要插入执行的Tween
      * @returns 返回当前补间动画实例
      */
-    public then(thenTween: XTween<any>): XTween<T> {
+    public then(thenTween: XTween<any>): this {
         let action = new ThenAction(thenTween);
         this.actionList.push(action);
         return this;
@@ -683,7 +702,7 @@ export class XTween<T> {
      * 开始当前Tween的所有动作
      * @returns 返回当前补间动画实例
      */
-    public start(): XTween<T> {
+    public start(): this {
         if (this.isPlaying || this.isPaused) return this;
         this._isPlaying = true;
         this._isPaused = false;
@@ -697,7 +716,7 @@ export class XTween<T> {
      * 暂停当前Tween的所有动作
      * @returns 返回当前补间动画实例
      */
-    public pause(): XTween<T> {
+    public pause(): this {
         if (!this.isPlaying || this.isPaused) return this;
         this._isPlaying = false;
         this._isPaused = true;
@@ -709,7 +728,7 @@ export class XTween<T> {
      * 恢复当前Tween的所有动作
      * @returns 返回当前补间动画实例
      */
-    public resume(): XTween<T> {
+    public resume(): this {
         if (!this.isPaused || this.isPlaying) return this;
         this._isPlaying = true;
         this._isPaused = false;
@@ -721,11 +740,22 @@ export class XTween<T> {
      * 停止当前Tween的所有动作
      * @returns 返回当前补间动画实例
      */
-    public stop(): XTween<T> {
+    public stop(): this {
         if (!this.isPaused && !this.isPlaying) return this;
         this._isPlaying = false;
         this._isPaused = false;
         tweenManager.remove(this);
+        this._clear();
+        return this;
+    }
+
+    /**
+     * 设置tween最终结果回调，如果tween是正常结束，返回参数为true，如果是非正常结束，返回参数为false。
+     * @param callback 回调函数
+     * @returns 返回当前补间动画实例
+     */
+    public onFinally(callback: (isCompleted: boolean) => void): this {
+        this.onFinallyFunc = callback;
         return this;
     }
 
@@ -762,7 +792,7 @@ export class XTween<T> {
     _updateActions(deltaTime: number): boolean {
         if (this.indexAction < this.actionList.length) {
             let action = this.actionList[this.indexAction];
-            if (!action.onUpdate(this.target, deltaTime))
+            if (!action.onUpdate(this.target, deltaTime * this.timeScale))
                 return false;
             action.onCompleted(this.target);
             this.indexAction++;
@@ -773,6 +803,18 @@ export class XTween<T> {
             }
         }
         return this.indexAction >= this.actionList.length;
+    }
+
+    /**
+     * 清理tween状态。这是内部函数，请不要外部调用
+     */
+    _clear(): void {
+        this._isPlaying = false;
+        this._isPaused = false;
+        if (this.onFinallyFunc != null) {
+            this.onFinallyFunc(this.indexAction >= this.actionList.length);
+            this.onFinallyFunc = null;
+        }
     }
 
     //----------------------------------------------------------------------------------------------------------------------------
