@@ -1,4 +1,6 @@
 
+// https://github.com/hubluesky/XTween
+
 type UnknownProps = Record<string, any>;
 type FlagExcludedType<Base, Type> = { [Key in keyof Base]: Base[Key] extends Type ? never : Key };
 type AllowedNames<Base, Type> = FlagExcludedType<Base, Type>[keyof Base];
@@ -46,6 +48,7 @@ interface Action<T> {
     reverseValues(target: T): void;
     onUpdate(target: T, deltaTime: number): boolean;
     onCompleted(target: T): void;
+    onCleared(): void;
 }
 
 class TweenSetAction<T> implements Action<T> {
@@ -75,6 +78,8 @@ class TweenSetAction<T> implements Action<T> {
     }
 
     public onCompleted(target: T): void { }
+
+    public onCleared(): void { }
 
     public static setupProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>): void {
         for (const property in valuesEnd) {
@@ -157,6 +162,8 @@ class TweenAction<T> implements Action<T> {
     public onCompleted(target: T): void {
         if (this.options.onComplete) this.options.onComplete(target);
     }
+
+    public onCleared(): void { }
 
     public static resetProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>): void {
         for (const property in valuesEnd) {
@@ -242,20 +249,22 @@ class DelayAction<T> implements Action<T> {
         this.duration = duration;
     }
 
-    onInitialize(target: T): void { }
+    public onInitialize(target: T): void { }
 
-    onStart(target: T): void {
+    public onStart(target: T): void {
         this.elapsedTime = 0;
     }
 
-    reverseValues(target: T): void { }
+    public reverseValues(target: T): void { }
 
-    onUpdate(target: T, deltaTime: number): boolean {
+    public onUpdate(target: T, deltaTime: number): boolean {
         this.elapsedTime += deltaTime;
         return this.elapsedTime >= this.duration;
     }
 
-    onCompleted(target: T): void { }
+    public onCompleted(target: T): void { }
+
+    public onCleared(): void { }
 }
 
 class CallAction<T> implements Action<T> {
@@ -269,18 +278,20 @@ class CallAction<T> implements Action<T> {
         this.argArray = argArray;
     }
 
-    onInitialize(target: T): void { }
+    public onInitialize(target: T): void { }
 
-    onStart(target: T): void { }
+    public onStart(target: T): void { }
 
-    reverseValues(target: T): void { }
+    public reverseValues(target: T): void { }
 
-    onUpdate(target: T, deltaTime: number): boolean {
+    public onUpdate(target: T, deltaTime: number): boolean {
         this.callback?.call(this.thisArg, ...this.argArray);
         return true;
     }
 
-    onCompleted(target: T): void { }
+    public onCompleted(target: T): void { }
+
+    public onCleared(): void { }
 }
 
 class TweenManager {
@@ -501,6 +512,7 @@ const TweenEasing = {
 };
 
 /**
+ * version 1.0
  * 这是一个补间动画
  * 支持对象的number属性
  * 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。
@@ -809,6 +821,8 @@ export class XTween<T> {
      * 清理tween状态。这是内部函数，请不要外部调用
      */
     _clear(): void {
+        for (let action of this.actionList)
+            action.onCleared();
         this._isPlaying = false;
         this._isPaused = false;
         if (this.onFinallyFunc != null) {
@@ -894,23 +908,27 @@ class ThenAction<T> implements Action<T> {
 
     public constructor(readonly tween: XTween<T>) { }
 
-    onInitialize(target: T): void {
+    public onInitialize(target: T): void {
         this.tween._intializeActions();
     }
 
-    onStart(target: T): void {
+    public onStart(target: T): void {
         this.tween._startActions();
     }
 
-    reverseValues(target: T): void {
+    public reverseValues(target: T): void {
         this.tween._reverseActions();
     }
 
-    onUpdate(target: T, deltaTime: number): boolean {
+    public onUpdate(target: T, deltaTime: number): boolean {
         return this.tween._updateActions(deltaTime);
     }
 
-    onCompleted(target: T): void { }
+    public onCompleted(target: T): void { }
+
+    public onCleared(): void {
+        this.tween._clear();
+    }
 }
 
 class SequenceAction<T> implements Action<T> {
@@ -918,24 +936,24 @@ class SequenceAction<T> implements Action<T> {
 
     public constructor(readonly tweens: XTween<T>[]) { }
 
-    onInitialize(target: T): void {
+    public onInitialize(target: T): void {
         let tween = this.tweens[this.currentIndex];
         tween._intializeActions();
     }
 
-    onStart(target: T): void {
+    public onStart(target: T): void {
         this.currentIndex = 0;
         let tween = this.tweens[this.currentIndex];
         tween._startActions();
     }
 
-    reverseValues(target: T): void {
+    public reverseValues(target: T): void {
         this.tweens.reverse();
         for (let tween of this.tweens)
             tween._reverseActions();
     }
 
-    onUpdate(target: T, deltaTime: number): boolean {
+    public onUpdate(target: T, deltaTime: number): boolean {
         if (this.currentIndex < this.tweens.length) {
             let tween = this.tweens[this.currentIndex];
             if (!tween._updateActions(deltaTime))
@@ -950,7 +968,12 @@ class SequenceAction<T> implements Action<T> {
         return this.currentIndex >= this.tweens.length;
     }
 
-    onCompleted(target: T): void { }
+    public onCompleted(target: T): void { }
+
+    public onCleared(): void {
+        for (let tween of this.tweens)
+            tween._clear();
+    }
 }
 
 class ParallelAction<T> implements Action<T> {
@@ -958,23 +981,23 @@ class ParallelAction<T> implements Action<T> {
 
     public constructor(readonly tweens: XTween<T>[]) { }
 
-    onInitialize(target: T): void {
+    public onInitialize(target: T): void {
         this.updateTweens = Array.from(this.tweens);
         for (let tween of this.tweens)
             tween._intializeActions();
     }
 
-    onStart(target: T): void {
+    public onStart(target: T): void {
         for (let tween of this.tweens)
             tween._startActions();
     }
 
-    reverseValues(target: T): void {
+    public reverseValues(target: T): void {
         for (let tween of this.tweens)
             tween._reverseActions();
     }
 
-    onUpdate(target: T, deltaTime: number): boolean {
+    public onUpdate(target: T, deltaTime: number): boolean {
         for (let i = this.updateTweens.length - 1; i >= 0; i--) {
             if (this.updateTweens[i]._updateActions(deltaTime))
                 this.updateTweens.splice(i, 1);
@@ -982,7 +1005,12 @@ class ParallelAction<T> implements Action<T> {
         return this.updateTweens.length == 0;
     }
 
-    onCompleted(target: T): void { }
+    public onCompleted(target: T): void { }
+
+    public onCleared(): void {
+        for (let tween of this.tweens)
+            tween._clear();
+    }
 }
 
 class RepeatAction<T> implements Action<T> {
@@ -994,20 +1022,20 @@ class RepeatAction<T> implements Action<T> {
         this.repeatTween = repeatTween;
     }
 
-    onInitialize(target: T): void {
+    public onInitialize(target: T): void {
         this.repeatTween._intializeActions();
     }
 
-    onStart(target: T): void {
+    public onStart(target: T): void {
         this.repeatCount = 0;
         this.repeatTween._startActions();
     }
 
-    reverseValues(target: T): void {
+    public reverseValues(target: T): void {
         this.repeatTween._reverseActions();
     }
 
-    onUpdate(target: T, deltaTime: number): boolean {
+    public onUpdate(target: T, deltaTime: number): boolean {
         if (this.repeatTween._updateActions(deltaTime)) {
             if (this.pingPong)
                 this.repeatTween._reverseActions();
@@ -1017,7 +1045,11 @@ class RepeatAction<T> implements Action<T> {
         return this.repeatCount >= this.repeatTimes;
     }
 
-    onCompleted(target: T): void { }
+    public onCompleted(target: T): void { }
+
+    public onCleared(): void {
+        this.repeatTween._clear();
+    }
 }
 
 export function xtween<T>(target: T): XTween<T> {
