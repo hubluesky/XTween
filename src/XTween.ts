@@ -1,6 +1,4 @@
 
-// https://github.com/hubluesky/XTween
-
 type UnknownProps = Record<string, any>;
 type FlagExcludedType<Base, Type> = { [Key in keyof Base]: Base[Key] extends Type ? never : Key };
 type AllowedNames<Base, Type> = FlagExcludedType<Base, Type>[keyof Base];
@@ -40,6 +38,14 @@ export interface ITweenOption<T> {
      * 回调，当缓动动作完成时触发。
      */
     onComplete?: (target?: T) => void;
+}
+
+class CallFunction {
+    public constructor(private readonly callback: Function, private readonly thisArg?: any, private readonly argArray?: any[]) { }
+    public call(...argArray: any[]): any {
+        if (this.argArray) argArray.unshift(...this.argArray);
+        return this.callback?.call(this.thisArg, ...argArray);
+    }
 }
 
 interface Action<T> {
@@ -267,16 +273,7 @@ class DelayAction<T> implements Action<T> {
     public onCleared(): void { }
 }
 
-class CallAction<T> implements Action<T> {
-    private readonly callback: Function;
-    private readonly thisArg: any;
-    private readonly argArray: any[];
-
-    public constructor(callback: Function, thisArg?: any, argArray?: any[]) {
-        this.callback = callback;
-        this.thisArg = thisArg;
-        this.argArray = argArray;
-    }
+class CallAction<T> extends CallFunction implements Action<T> {
 
     public onInitialize(target: T): void { }
 
@@ -285,7 +282,7 @@ class CallAction<T> implements Action<T> {
     public reverseValues(target: T): void { }
 
     public onUpdate(target: T, deltaTime: number): boolean {
-        this.callback?.call(this.thisArg, ...this.argArray);
+        this.call();
         return true;
     }
 
@@ -568,7 +565,7 @@ export class XTween<T> {
     private readonly actionList: Action<T>[] = [];
     private indexAction: number;
     private timeScale: number = 1;
-    private onFinallyFunc: (isCompleted: boolean) => void;
+    private onFinallyFunc: CallFunction;
     private _isPlaying = false;
     private _isPaused = false;
     public get isPlaying() { return this._isPlaying; }
@@ -766,8 +763,8 @@ export class XTween<T> {
      * @param callback 回调函数
      * @returns 返回当前补间动画实例
      */
-    public onFinally(callback: (isCompleted: boolean) => void): this {
-        this.onFinallyFunc = callback;
+    public onFinally<F extends (result: boolean) => void>(callback: F, thisArg?: any): this {
+        this.onFinallyFunc = new CallFunction(callback, thisArg);
         return this;
     }
 
@@ -826,7 +823,7 @@ export class XTween<T> {
         this._isPlaying = false;
         this._isPaused = false;
         if (this.onFinallyFunc != null) {
-            this.onFinallyFunc(this.indexAction >= this.actionList.length);
+            this.onFinallyFunc.call(this.indexAction >= this.actionList.length);
             this.onFinallyFunc = null;
         }
     }
