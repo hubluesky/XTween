@@ -295,7 +295,7 @@ class TweenManager {
     private lastTime: number;
     private tweenList: XTween<UnknownProps>[] = [];
     public updateTweens = () => {
-        this.lastTime = Date.now();
+        this.lastTime = Date.now() * XTween.TIME_UNIT;
         this.updateTweens = this.update.bind(this);
     };
 
@@ -332,7 +332,7 @@ class TweenManager {
         this.tweenList.length = 0;
     }
 
-    private update(time: number = Date.now()): void {
+    private update(time: number = Date.now() * XTween.TIME_UNIT): void {
         let deltaTime = time - this.lastTime;
         this.lastTime = time;
 
@@ -559,8 +559,9 @@ const TweenEasing = {
  * ```
  */
 export class XTween<T> {
-    public static Easing = TweenEasing;
-
+    /** 时间默认单位（秒） */
+    public static TIME_UNIT = 0.001;
+    public static readonly Easing = TweenEasing;
     public readonly target: T;
     private readonly actionList: Action<T>[] = [];
     private indexAction: number;
@@ -590,7 +591,7 @@ export class XTween<T> {
 
     /**
      * 对目标对象属性进行补间动作
-     * @param duration 补间时长，单位毫秒
+     * @param duration 补间时长
      * @param properties 属性集
      * @param options 补间可选参数
      * @returns 返回当前补间动画实例
@@ -603,7 +604,7 @@ export class XTween<T> {
 
     /**
       * 对目标对象属性进行补间动作
-      * @param duration 补间时长，单位毫秒
+      * @param duration 补间时长
       * @param properties 属性集
       * @param options 补间可选参数
       * @returns 返回当前补间动画实例
@@ -627,7 +628,7 @@ export class XTween<T> {
 
     /**
      * 对当前补间动作进行延迟
-     * @param duration 补间时长，单位毫秒
+     * @param duration 补间时长
      * @returns 返回当前补间动画实例
      */
     public delay(duration: number): this {
