@@ -1,4 +1,4 @@
-import { CCObject, Node, Renderable2D, System } from "cc";
+import { CCObject, Node, Renderable2D, System, director, Director } from "cc";
 import { EDITOR } from "cc/env";
 import { XTween } from "./XTween";
 
@@ -221,9 +221,9 @@ export class XTweenSystem extends System {
     }
 }
 
-// director.on(Director.EVENT_INIT, () => {
-//     console.log("XTween Director.EVENT_INIT");
-//     const sys = new XTweenSystem();
-//     director.registerSystem(XTweenSystem.ID, sys, System.Priority.MEDIUM);
-// });
+director.on(Director.EVENT_INIT, () => {
+    // console.log("XTween Director.EVENT_INIT");
+    const sys = new XTweenSystem();
+    director.registerSystem(XTweenSystem.ID, sys, System.Priority.MEDIUM);
+});
 // console.log("XTween Director.on");
