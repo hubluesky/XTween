@@ -108,6 +108,7 @@ class TweenSetAction<T> implements Action<T> {
 
             if (propType === 'object') {
                 TweenSetAction.updateProperties(target[property], valuesStart, end);
+                target[property] = target[property];
             } else {
                 target[property] = end;
             }
@@ -219,6 +220,7 @@ class TweenAction<T> implements Action<T> {
 
             if (propType === 'object') {
                 TweenAction.updateProperties(target[property], start, end, ratio, lerpFunc, interpolation);
+                target[property] = target[property];
             } else if (propType === 'number') {
                 lerpFunc(target, property, valuesStart, start, end, ratio, interpolation);
             }
