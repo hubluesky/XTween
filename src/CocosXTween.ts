@@ -83,7 +83,8 @@ Object.defineProperties(Node.prototype, {
         get: function () { return this.position.x; },
         set: function (v) {
             if (this.position.x == v) return;
-            this.setPosition(v);
+            this.position.x = v;
+            this.setPosition(this.position);
         },
         enumerable: true,
         configurable: true
@@ -222,8 +223,8 @@ export class XTweenSystem extends System {
 }
 
 director.on(Director.EVENT_INIT, () => {
-    // console.log("XTween Director.EVENT_INIT");
+    console.log("XTween Director.EVENT_INIT");
     const sys = new XTweenSystem();
     director.registerSystem(XTweenSystem.ID, sys, System.Priority.MEDIUM);
 });
-// console.log("XTween Director.on");
+console.log("XTween Director.on");
