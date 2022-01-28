@@ -66,8 +66,10 @@ class TweenSetAction<T> implements Action<T> {
     }
 
     public onInitialize(target: T): void {
-        this.valuesStart = {};
-        TweenSetAction.setupProperties(target, this.valuesStart, this.valuesEnd);
+        if (this.valuesStart == null) {
+            this.valuesStart = {};
+            TweenSetAction.setupProperties(target, this.valuesStart, this.valuesEnd);
+        }
     }
 
     public onStart(target: T): void { }
@@ -142,14 +144,16 @@ class TweenAction<T> implements Action<T> {
     }
 
     public onInitialize(target: T): void {
-        this.valuesStart = {};
-        TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.setupValueFunction);
+        if (this.valuesStart == null) {
+            this.valuesStart = {};
+            TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, this.setupValueFunction);
+        }
     }
 
     public onStart(target: T): void {
         this.elapsedTime = 0;
         if (this.options.onStart) this.options.onStart(target);
-        if (this.setupValueFunction == TweenAction.byValue) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
+        // if (this.setupValueFunction == TweenAction.byValue) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
     }
 
     public reverseValues(target: T): void {
@@ -775,6 +779,7 @@ export class XTween<T> {
      * 初始化所有Action，这是内部函数，请不要外部调用
      */
     _intializeActions(): void {
+        this.indexAction = 0;
         if (this.actionList.length > 0)
             this.actionList[0].onInitialize(this.target);
     }
@@ -783,7 +788,6 @@ export class XTween<T> {
      * 开始所有Action，这是内部函数，请不要外部调用
      */
     _startActions(): void {
-        this.indexAction = 0;
         if (this.actionList.length > 0)
             this.actionList[0].onStart(this.target);
     }
@@ -937,14 +941,12 @@ class SequenceAction<T> implements Action<T> {
     public constructor(readonly tweens: XTween<T>[]) { }
 
     public onInitialize(target: T): void {
-        let tween = this.tweens[this.currentIndex];
-        tween._intializeActions();
+        this.currentIndex = 0;
+        this.tweens[this.currentIndex]._intializeActions();
     }
 
     public onStart(target: T): void {
-        this.currentIndex = 0;
-        let tween = this.tweens[this.currentIndex];
-        tween._startActions();
+        this.tweens[this.currentIndex]._startActions();
     }
 
     public reverseValues(target: T): void {
@@ -1039,6 +1041,7 @@ class RepeatAction<T> implements Action<T> {
         if (this.repeatTween._updateActions(deltaTime)) {
             if (this.pingPong)
                 this.repeatTween._reverseActions();
+            this.repeatTween._intializeActions();
             this.repeatTween._startActions();
             this.repeatCount++;
         }
