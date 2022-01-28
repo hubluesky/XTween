@@ -153,7 +153,7 @@ class TweenAction<T> implements Action<T> {
     public onStart(target: T): void {
         this.elapsedTime = 0;
         if (this.options.onStart) this.options.onStart(target);
-        // if (this.setupValueFunction == TweenAction.byValue) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
+        if (this.setupValueFunction == TweenAction.byValue) TweenAction.setupProperties(target, this.valuesStart, this.valuesEnd, TweenAction.byValue);
     }
 
     public reverseValues(target: T): void {
@@ -515,7 +515,7 @@ const TweenEasing = {
 };
 
 /**
- * version 1.0
+ * version 1.1
  * 这是一个补间动画
  * 支持对象的number属性
  * 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。
