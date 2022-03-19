@@ -23,7 +23,7 @@ export default class SvgPathEase {
         this.setData(data);
     }
 
-    public setData(data: string = "0,0,1,1", config = { precision: 1 }): void {
+    public setData(data: string = "0,0,1,1", config = { precision: 1, height: undefined, originY: undefined }): void {
         let values: number[] = data.match(_numExp) as any;
         let closest = 1;
         let points: BezierPoint[] = [];

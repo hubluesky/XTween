@@ -149,7 +149,7 @@ export default class SvgPath {
                 if (command === "Z") {
                     x = startX;
                     y = startY;
-                    segment.closed = true;
+                    // segment.closed = true;
                 }
 
                 if (command === "L" || _abs(relativeX - x) > 0.5 || _abs(relativeY - y) > 0.5) {
@@ -208,10 +208,10 @@ export default class SvgPath {
             path.pop();
             i = 0;
         } else if (segment[0] === segment[i - 2] && segment[1] === segment[i - 1]) {
-            segment.closed = true;
+            // segment.closed = true;
         }
 
-        path.totalPoints = points + i;
+        // path.totalPoints = points + i;
         return path;
     }
 
