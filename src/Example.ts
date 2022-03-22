@@ -1,3 +1,4 @@
+import BezierEase from "./CustomEase/BezierEase";
 import SvgPathEase from "./CustomEase/SvgPathEase";
 import { xtween, XTween } from "./XTween";
 
@@ -22,10 +23,16 @@ function logTarget(target: Target, target2: Target): void {
     console.log("Call 1", target, target2);
 }
 
+// xtween(target).to(1, { alpha: 2 }, {
+//     onUpdate: () => {
+//         console.log("target", target.alpha);
+//     }, easing: SvgPathEase.create("M0,0 C0.104,0.204 0.492,1 1,1")
+// }).start();
+
 xtween(target).to(1, { alpha: 2 }, {
     onUpdate: () => {
         console.log("target", target.alpha);
-    }, easing: SvgPathEase.create("M0,0 C0.104,0.204 0.492,1 1,1")
+    }, easing: BezierEase.create(0.30, 0.53, 0.88, 0.21)
 }).start();
 
 // xtween(target)

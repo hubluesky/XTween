@@ -515,7 +515,7 @@ const TweenEasing = {
 };
 
 /**
- * version 1.1
+ * version 1.2
  * 这是一个补间动画
  * 支持对象的number属性
  * 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。

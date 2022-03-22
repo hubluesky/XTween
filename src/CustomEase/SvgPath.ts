@@ -1,20 +1,15 @@
 const _svgPathExp = /[achlmqstvz]|(-?\d*\.?\d*(?:e[\-+]?\d+)?)[0-9]/ig;
-const _numbersExp = /(?:(-)?\d*\.?\d*(?:e[\-+]?\d+)?)[0-9]/ig;
 const _scientific = /[\+\-]?\d*\.?\d+e[\+\-]?\d+/ig;
-const _selectorExp = /(^[#\.][a-z]|[a-y][a-z])/i;
 const _DEG2RAD = Math.PI / 180;
-const _RAD2DEG = 180 / Math.PI;
-const _sin = Math.sin;
-const _cos = Math.cos;
-const _abs = Math.abs;
-const _sqrt = Math.sqrt;
-const _atan2 = Math.atan2;
-const _largeNum = 1e8;
+const sin = Math.sin;
+const cos = Math.cos;
+const abs = Math.abs;
+const sqrt = Math.sqrt;
 
 export default class SvgPath {
 
     public static stringToRawPath(d: string) {
-        let a: any[] = (d + "").replace(_scientific, function (m) {
+        let a: any[] = (d + "").replace(_scientific, function (m): any {
             let n = +m;
             return n < 0.0001 && n > -0.0001 ? 0 : n;
         }).match(_svgPathExp) as any || [];
@@ -26,10 +21,6 @@ export default class SvgPath {
         let elements = a.length;
         let points = 0;
         let errorMessage = "ERROR: malformed path: " + d;
-        // i,
-        // j,
-        // x,
-        // y,
         let command;
         let isRelative: boolean;
         let segment: number[];
@@ -37,10 +28,6 @@ export default class SvgPath {
         let startY: number;
         let difX: number;
         let difY: number;
-        // beziers,
-        // prevCommand,
-        // flag1,
-        // flag2,
         const line = function line(sx, sy, ex, ey) {
             difX = (ex - sx) / 3;
             difY = (ey - sy) / 3;
@@ -152,7 +139,7 @@ export default class SvgPath {
                     // segment.closed = true;
                 }
 
-                if (command === "L" || _abs(relativeX - x) > 0.5 || _abs(relativeY - y) > 0.5) {
+                if (command === "L" || abs(relativeX - x) > 0.5 || abs(relativeY - y) > 0.5) {
                     line(relativeX, relativeY, x, y);
 
                     if (command === "L") {
@@ -216,17 +203,16 @@ export default class SvgPath {
     }
 
 
-    private static arcToSegment(lastX, lastY, rx, ry, angle, largeArcFlag, sweepFlag, x, y): number[] {
-        if (lastX === x && lastY === y) {
+    private static arcToSegment(lastX: number, lastY: number, rx: number, ry: number, angle: number, largeArcFlag: number, sweepFlag: number, x: number, y: number): number[] {
+        if (lastX === x && lastY === y)
             return null;
-        }
 
-        rx = _abs(rx);
-        ry = _abs(ry);
+        rx = abs(rx);
+        ry = abs(ry);
 
         let angleRad = angle % 360 * _DEG2RAD;
-        let cosAngle = _cos(angleRad);
-        let sinAngle = _sin(angleRad);
+        let cosAngle = cos(angleRad);
+        let sinAngle = sin(angleRad);
         let PI = Math.PI;
         let TWOPI = PI * 2;
         let dx2 = (lastX - x) / 2;
@@ -238,8 +224,8 @@ export default class SvgPath {
         let radiiCheck = x1_sq / (rx * rx) + y1_sq / (ry * ry);
 
         if (radiiCheck > 1) {
-            rx = _sqrt(radiiCheck) * rx;
-            ry = _sqrt(radiiCheck) * ry;
+            rx = sqrt(radiiCheck) * rx;
+            ry = sqrt(radiiCheck) * ry;
         }
 
         let rx_sq = rx * rx;
@@ -250,7 +236,7 @@ export default class SvgPath {
             sq = 0;
         }
 
-        let coef = (largeArcFlag === sweepFlag ? -1 : 1) * _sqrt(sq);
+        let coef = (largeArcFlag === sweepFlag ? -1 : 1) * sqrt(sq);
         let cx1 = coef * (rx * y1 / ry);
         let cy1 = coef * -(ry * x1 / rx);
         let sx2 = (lastX + x) / 2;
@@ -262,8 +248,8 @@ export default class SvgPath {
         let vx = (-x1 - cx1) / rx;
         let vy = (-y1 - cy1) / ry;
         let temp = ux * ux + uy * uy;
-        let angleStart = (uy < 0 ? -1 : 1) * Math.acos(ux / _sqrt(temp));
-        let angleExtent = (ux * vy - uy * vx < 0 ? -1 : 1) * Math.acos((ux * vx + uy * vy) / _sqrt(temp * (vx * vx + vy * vy)));
+        let angleStart = (uy < 0 ? -1 : 1) * Math.acos(ux / sqrt(temp));
+        let angleExtent = (ux * vy - uy * vx < 0 ? -1 : 1) * Math.acos((ux * vx + uy * vy) / sqrt(temp * (vx * vx + vy * vy)));
 
         isNaN(angleExtent) && (angleExtent = PI); //rare edge case. Math.cos(-1) is NaN.
 
@@ -276,10 +262,10 @@ export default class SvgPath {
         angleStart %= TWOPI;
         angleExtent %= TWOPI;
 
-        let segments = Math.ceil(_abs(angleExtent) / (TWOPI / 4));
+        let segments = Math.ceil(abs(angleExtent) / (TWOPI / 4));
         let rawPath: number[] = [];
         let angleIncrement = angleExtent / segments;
-        let controlLength = 4 / 3 * _sin(angleIncrement / 2) / (1 + _cos(angleIncrement / 2));
+        let controlLength = 4 / 3 * sin(angleIncrement / 2) / (1 + cos(angleIncrement / 2));
         let ma = cosAngle * rx;
         let mb = sinAngle * rx;
         let mc = sinAngle * -ry;
@@ -287,10 +273,10 @@ export default class SvgPath {
 
         for (let i = 0; i < segments; i++) {
             angle = angleStart + i * angleIncrement;
-            x1 = _cos(angle);
-            y1 = _sin(angle);
-            ux = _cos(angle += angleIncrement);
-            uy = _sin(angle);
+            x1 = cos(angle);
+            y1 = sin(angle);
+            ux = cos(angle += angleIncrement);
+            uy = sin(angle);
             rawPath.push(x1 - controlLength * y1, y1 + controlLength * x1, ux + controlLength * uy, uy - controlLength * ux, ux, uy);
         } //now transform according to the actual size of the ellipse/arc (the beziers were noramlized, between 0 and 1 on a circle).
 

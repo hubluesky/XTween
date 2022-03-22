@@ -1,6 +1,6 @@
+import ICustomEase, { EasingFunction } from "./CustomEase";
 import SvgPath from "./SvgPath";
 
-type EasingFunction = (amount: number) => number;
 interface BezierPoint {
     x: number;
     y: number;
@@ -15,31 +15,24 @@ const _numExp = /[-+=\.]*\d+[\.e\-\+]*\d*[e\-\+]*\d*/gi;
 // finds any numbers, including ones that start with += or -=, negative numbers, and ones in scientific notation like 1e-8.
 const _needsParsingExp = /[cLlsSaAhHvVtTqQ]/g;
 
-export default class SvgPathEase {
-    private _easeFunc: EasingFunction;
-    public get easeFunc() { return this._easeFunc; }
+export default class SvgPathEase implements ICustomEase {
+    public readonly easeFunc: EasingFunction;
 
-    public constructor(data: string) {
-        this.setData(data);
+    public static create(data: string): EasingFunction {
+        return new SvgPathEase(data).easeFunc;
     }
 
-    public setData(data: string = "0,0,1,1", config = { precision: 1, height: undefined, originY: undefined }): void {
+    private constructor(data: string) {
+        this.easeFunc = this.initData(data);
+    }
+
+    private initData(data: string = "0,0,1,1", config = { precision: 1, height: undefined, originY: undefined }): EasingFunction {
         let values: number[] = data.match(_numExp) as any;
         let closest = 1;
         let points: BezierPoint[] = [];
         let lookup = [];
         let precision = config.precision || 1;
         let fast = precision <= 1;
-        // l,
-        // a1,
-        // a2,
-        // i,
-        // inc,
-        // j,
-        // point,
-        // prevPoint,
-        // p;
-        // this.data = data;
 
         if (_needsParsingExp.test(data) || ~data.indexOf("M") && data.indexOf("C") < 0) {
             values = SvgPath.stringToRawPath(data)[0];
@@ -56,16 +49,14 @@ export default class SvgPathEase {
         }
 
         if (+values[0] !== 0 || +values[length - 2] !== 1) {
-            this._normalize(values, config.height, config.originY);
+            this.normalize(values, config.height, config.originY);
         }
-
-        // this.segment = values;
 
         for (let i = 2; i < length; i += 6) {
             let a1: BezierPoint = { x: +values[i - 2], y: +values[i - 1] };
             let a2: BezierPoint = { x: +values[i + 4], y: +values[i + 5] };
             points.push(a1, a2);
-            this._bezierToPoints(a1.x, a1.y, +values[i], +values[i + 1], +values[i + 2], +values[i + 3], a2.x, a2.y, 1 / (precision * 200000), points, points.length - 1);
+            this.bezierToPoints(a1.x, a1.y, +values[i], +values[i + 1], +values[i + 2], +values[i + 3], a2.x, a2.y, 1 / (precision * 200000), points, points.length - 1);
         }
 
         length = points.length;
@@ -147,7 +138,7 @@ export default class SvgPathEase {
         } //this._calcEnd = (points[points.length-1].y !== 1 || points[0].y !== 0); //ensures that we don't run into floating point errors. As long as we're starting at 0 and ending at 1, tell GSAP to skip the final calculation and use 0/1 as the factor.
 
 
-        this._easeFunc = function (p) {
+        return function (p) {
             let point = lookup[p * length | 0] || lookup[length - 1];
 
             if (point.nx < p) {
@@ -156,13 +147,9 @@ export default class SvgPathEase {
 
             return point.y + (p - point.x) / point.cx * point.cy;
         };
-
-        // this.ease.custom = this;
-        // this.id && gsap && gsap.registerEase(this.id, this.ease);
-        // return this;
     }
 
-    private _findMinimum(values: number[]) {
+    private findMinimum(values: number[]) {
         let l = values.length;
         let min = _bigNum;
         for (let i = 1; i < l; i += 6) {
@@ -171,7 +158,7 @@ export default class SvgPathEase {
         return min;
     }
 
-    private _normalize(values: number[], height: number, originY: number): void {
+    private normalize(values: number[], height: number, originY: number): void {
         if (!originY && originY !== 0) {
             originY = Math.max(+values[values.length - 1], +values[1]);
         }
@@ -180,7 +167,7 @@ export default class SvgPathEase {
         let ty = -originY;
         let l = values.length;
         let sx = 1 / (+values[l - 2] + tx);
-        let sy = -height || (Math.abs(+values[l - 1] - +values[1]) < 0.01 * (+values[l - 2] - +values[0]) ? this._findMinimum(values) + ty : +values[l - 1] + ty);
+        let sy = -height || (Math.abs(+values[l - 1] - +values[1]) < 0.01 * (+values[l - 2] - +values[0]) ? this.findMinimum(values) + ty : +values[l - 1] + ty);
 
         if (sy) {
             //typically y ends at 1 (so that the end values are reached)
@@ -196,7 +183,7 @@ export default class SvgPathEase {
         }
     }
 
-    private _bezierToPoints(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number, threshold: number, points: BezierPoint[], index: number): BezierPoint[] {
+    private bezierToPoints(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number, threshold: number, points: BezierPoint[], index: number): BezierPoint[] {
         let x12 = (x1 + x2) / 2;
         let y12 = (y1 + y2) / 2;
         let x23 = (x2 + x3) / 2;
@@ -223,14 +210,10 @@ export default class SvgPathEase {
 
         if ((d2 + d3) * (d2 + d3) > threshold * (dx * dx + dy * dy)) {
             let length = points.length;
-            this._bezierToPoints(x1, y1, x12, y12, x123, y123, x1234, y1234, threshold, points, index);
-            this._bezierToPoints(x1234, y1234, x234, y234, x34, y34, x4, y4, threshold, points, index + 1 + (points.length - length));
+            this.bezierToPoints(x1, y1, x12, y12, x123, y123, x1234, y1234, threshold, points, index);
+            this.bezierToPoints(x1234, y1234, x234, y234, x34, y34, x4, y4, threshold, points, index + 1 + (points.length - length));
         }
 
         return points;
-    }
-
-    public static create(data: string): EasingFunction {
-        return new SvgPathEase(data).easeFunc;
     }
 }
