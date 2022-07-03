@@ -1,5 +1,5 @@
-import SvgPathEase from "./CustomEase/SvgPathEase";
-import { xtween, XTween } from "./XTween";
+import SvgPathEase from "../src/CustomEase/SvgPathEase";
+import { XTween } from "../src/XTween";
 
 console.log("start xtween example.");
 
@@ -22,11 +22,11 @@ function logTarget(target: Target, target2: Target): void {
     console.log("Call 1", target, target2);
 }
 
-xtween(target).to(1, { alpha: 2 }, {
-    onUpdate: () => {
-        console.log("target", target.alpha);
-    }, easing: SvgPathEase.create("M0,0 C0.104,0.204 0.492,1 1,1")
-}).start();
+// xtween(target).to(1, { alpha: 2 }, {
+//     onUpdate: () => {
+//         console.log("target", target.alpha);
+//     }, easing: SvgPathEase.create("M0,0 C0.104,0.204 0.492,1 1,1")
+// }).start();
 
 // xtween(target)
 //     .to(100, { width: 500, rotation: 360 }, { easing: XTween.Easing.Back.Out })

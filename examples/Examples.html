@@ -1,0 +1,71 @@
+<html lang="en" class="">
+
+<head>
+    <meta charset="UTF-8">
+    <title>XTween Demo</title>
+    <link rel="stylesheet" href="./JGaKdQ.css">
+    <style class="INLINE_PEN_STYLESHEET_ID">
+        body {
+            margin: 10px;
+        }
+
+        button {
+            text-transform: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="box green"></div>
+
+    <div class="nav">
+        <button id="play">play()</button>
+        <button id="pause">pause()</button>
+        <button id="resume">resume()</button>
+        <button id="reverse">reverse()</button>
+        <button id="restart">restart()</button>
+    </div>
+
+    <script type="module">
+        import { XTween } from "../dist/src/XTween.js";
+        let updateXTween = function () {
+            XTween.updateTweens();
+            requestAnimationFrame(updateXTween);
+        };
+        requestAnimationFrame(updateXTween);
+
+        let style = document.querySelector(".green").style;
+        let target = { _x: 0, _r: 0 };
+        target = Object.defineProperties(target, {
+            x: {
+                get: function () {
+                    return target._x;
+                },
+                set: function (v) {
+                    target._x = v;
+                    style.transform = `translateX(${v}px) rotate(${this._r}deg)`;
+                }
+            },
+            angle: {
+                get: function () {
+                    return target._r;
+                },
+                set: function (v) {
+                    target._r = v;
+                    style.transform = `translateX(${this._x}px) rotate(${v}deg)`;
+                }
+            }
+        });
+
+        let tween = XTween.to(target, 2.2, { x: 470, angle: 360 }, { easing: "circularOut" });
+
+        document.querySelector("#play").onclick = () => tween.start();
+        document.querySelector("#pause").onclick = () => tween.pause();
+        document.querySelector("#resume").onclick = () => tween.resume();
+        document.querySelector("#reverse").onclick = () => tween.reverse();
+        document.querySelector("#restart").onclick = () => tween.restart();
+    </script>
+
+</body>
+
+</html>

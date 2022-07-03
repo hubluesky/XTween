@@ -16,7 +16,7 @@ export default class SvgPath {
     public static stringToRawPath(d: string) {
         let a: any[] = (d + "").replace(_scientific, function (m) {
             let n = +m;
-            return n < 0.0001 && n > -0.0001 ? 0 : n;
+            return (n < 0.0001 && n > -0.0001 ? 0 : n) as any;
         }).match(_svgPathExp) as any || [];
         //some authoring programs spit out very small numbers in scientific notation like "1e-5", so make sure we round that down to 0 first.
         let path = [];
