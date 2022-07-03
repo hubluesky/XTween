@@ -33,7 +33,6 @@ by跟to的区别是：
 * by是每帧给当前属性的值增量修改到目标的值。例如上面的width：50就是把width在原来100的基础上再增加50
   总结：to会每帧覆盖原来属性的值， 而by不会，只会每帧修改属性的值。
 
-
 ### TweenOption
 
 无论是to还是by，都有提供option参数，option的内容以下，支持缓动函数，插值函数，以及三种时机下的回调函数。
@@ -149,10 +148,12 @@ xtween(size).to(0.6, { width: 150 }).then(xtween(transform).to(0.3, { rotation: 
 // 重复执行4次
 XTween.repeat(4, false, xtween(size).to(0.6, { width: 150 }).to(0.7, { width: 100 })).start();
 // 永远重复
-XTween.repeatForever(false, xtween(size).to(0.6, { width: 150 }).to(0.7, { width: 100 })).start();
+XTween.repeatForever(true, xtween(size).to(0.6, { width: 150 }).to(0.7, { height: 100 })).start();
 // pingPong模式，来回补间动画
 XTween.repeatForever(true, xtween(size).to(0.6, { width: 150 })).start();
 ```
+
+repeat动画会记录被重复的tween的起始值，使每一次重复都能从头开始。如果pingpong模式为true，就会在repeat一次后，被重复的tween会整个被反过来执行，比如上面的第二个动画。size对象第一次执行为：width会从“当前值”到150，然后就是height从“当前值”到100。第二次执行为：height从100到“当前值”，然后就是width从150到“当前值，如此重复。
 
 ##### 队列顺序执行动画
 
@@ -193,7 +194,6 @@ XTween.parallel(
 `set` 直接设置对象Target的属性
 
 `removeTargetTweens` 删除目标身上所有的tween
-
 
 复杂示例：
 
