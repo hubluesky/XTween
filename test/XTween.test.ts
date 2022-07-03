@@ -1,8 +1,41 @@
 import { XTween } from "../src/XTween";
 
-// setInterval(function () {
-//     XTween.updateTweens();
-// }, 1);
+let timer: NodeJS.Timer;
+let frameCount = 0;
+let lastDeltaTime: number = 0;
+let curDeltaTime: number = 0;
+let curTime: number = 0;
+let totalTime: number = 0;
+function startUpdateXTween() {
+    console.log("startUpdateXTween", Date.now());
+    let lastTime = Date.now();
+    timer = setInterval(function () {
+        frameCount++;
+        lastDeltaTime = curDeltaTime;
+        curTime = Date.now();
+        curDeltaTime = curTime - lastTime;
+        lastTime = curTime;
+        totalTime += curDeltaTime;
+
+        console.log("updateTweens ", curDeltaTime);
+        XTween.updateTweens();
+    }, 1);
+}
+function stopUpdateXTween() {
+    console.log("stopUpdateXTween", totalTime, Date.now());
+    clearInterval(timer);
+}
+
+beforeAll(() => {
+    jest.useFakeTimers();
+    startUpdateXTween();
+    jest.advanceTimersByTime(1);
+});
+
+afterAll(() => {
+    stopUpdateXTween();
+    jest.useRealTimers();
+}, 1000);
 
 function add(a: number, b: number): number {
     return a + b;
@@ -23,6 +56,13 @@ test('empty xtween', () => {
     expect(t.timeScale).toBe(1);
     expect(t.isPlaying).toBeFalsy();
     expect(t.isPaused).toBeFalsy();
+});
+
+test("finally call xtween", () => {
+    const mockCall = jest.fn();
+    new XTween({}).onFinally(mockCall).start();
+    jest.advanceTimersByTime(1);
+    expect(mockCall).toHaveBeenCalled();
 });
 
 test('xtween repeat init value', () => {
@@ -67,9 +107,7 @@ test('xtween call', () => {
     };
 
     const mockCall = jest.fn().mockImplementation(call);
-    // mockCall();
     let t = new XTween({}).call(mockCall).start();
-    expect(t.isPlaying).toBeTruthy();
-    expect(t.isPaused).toBeFalsy();
+    jest.advanceTimersByTime(1);
     expect(mockCall).toHaveBeenCalled();
 });

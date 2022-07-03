@@ -18,9 +18,14 @@ class Target {
 let target = new Target();
 let target2 = new Target();
 
-function logTarget(target: Target, target2: Target): void {
-    console.log("Call 1", target, target2);
-}
+// function logTarget(target: Target, target2: Target): void {
+//     console.log("Call 1", target, target2);
+// }
+
+let call = () => {
+    console.log("finally call ");
+};
+new XTween({}).onFinally(call).start();
 
 // xtween(target).to(1, { alpha: 2 }, {
 //     onUpdate: () => {
