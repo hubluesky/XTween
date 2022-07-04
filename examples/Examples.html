@@ -27,7 +27,7 @@
     </div>
 
     <script type="module">
-        import { XTween } from "../dist/src/XTween.js";
+        import { XTween } from "../dist/XTween.js";
         let updateXTween = function () {
             XTween.updateTweens();
             requestAnimationFrame(updateXTween);
@@ -57,7 +57,7 @@
             }
         });
 
-        let tween = XTween.to(target, 2.2, { x: 470, angle: 360 }, { easing: "circularOut" });
+        let tween = new XTween(target, 2, false).to(2.2, { x: 470, angle: 360 }, { easing: "circularInOut" });
 
         document.querySelector("#play").onclick = () => tween.start();
         document.querySelector("#pause").onclick = () => tween.pause();

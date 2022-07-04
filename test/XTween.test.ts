@@ -1,5 +1,6 @@
 import { XTween } from "../src/XTween";
 
+const frameInterval = 88;
 let timer: NodeJS.Timer;
 let frameCount = 0;
 let lastDeltaTime: number = 0;
@@ -7,8 +8,9 @@ let curDeltaTime: number = 0;
 let curTime: number = 0;
 let totalTime: number = 0;
 function startUpdateXTween() {
-    console.log("startUpdateXTween", Date.now());
     let lastTime = Date.now();
+    console.log("startUpdateXTween", lastTime / 1000);
+    XTween.TIME_UNIT = 1;
     timer = setInterval(function () {
         frameCount++;
         lastDeltaTime = curDeltaTime;
@@ -17,35 +19,35 @@ function startUpdateXTween() {
         lastTime = curTime;
         totalTime += curDeltaTime;
 
-        console.log("updateTweens ", curDeltaTime);
+        // console.log("updateTweens ", curDeltaTime);
         XTween.updateTweens();
-    }, 1);
+    }, frameInterval);
 }
 function stopUpdateXTween() {
-    console.log("stopUpdateXTween", totalTime, Date.now());
+    console.log("stopUpdateXTween", frameCount, totalTime / 1000);
     clearInterval(timer);
 }
 
 beforeAll(() => {
     jest.useFakeTimers();
     startUpdateXTween();
-    jest.advanceTimersByTime(1);
+    jest.advanceTimersByTime(frameInterval);
 });
 
 afterAll(() => {
     stopUpdateXTween();
     jest.useRealTimers();
-}, 1000);
-
-function add(a: number, b: number): number {
-    return a + b;
-}
-
-describe("add function", () => {
-    it("1 + 1 = 2", () => {
-        expect(add(1, 1)).toEqual(2);
-    });
 });
+
+// function add(a: number, b: number): number {
+//     return a + b;
+// }
+
+// describe("add function", () => {
+//     it("1 + 1 = 2", () => {
+//         expect(add(1, 1)).toEqual(2);
+//     });
+// });
 
 test('empty xtween', () => {
     let obj = {};
@@ -61,7 +63,7 @@ test('empty xtween', () => {
 test("finally call xtween", () => {
     const mockCall = jest.fn();
     new XTween({}).onFinally(mockCall).start();
-    jest.advanceTimersByTime(1);
+    jest.advanceTimersByTime(frameInterval);
     expect(mockCall).toHaveBeenCalled();
 });
 
@@ -108,6 +110,22 @@ test('xtween call', () => {
 
     const mockCall = jest.fn().mockImplementation(call);
     let t = new XTween({}).call(mockCall).start();
-    jest.advanceTimersByTime(1);
+    jest.advanceTimersByTime(frameInterval);
     expect(mockCall).toHaveBeenCalled();
+});
+
+test("xtween to", () => {
+    let obj = { x: 5 };
+    const duration = 200;
+    XTween.to(obj, duration, { x: 30 }).start();
+    jest.advanceTimersByTime(duration + frameInterval);
+    expect(obj.x).toBe(30);
+});
+
+test("xtween by", () => {
+    let obj = { x: 5 };
+    const duration = 200;
+    XTween.by(obj, duration, { x: 30 }).start();
+    jest.advanceTimersByTime(duration + frameInterval);
+    expect(obj.x).toEqual(35);
 });

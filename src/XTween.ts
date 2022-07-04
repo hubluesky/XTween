@@ -256,17 +256,17 @@ abstract class TargetAction<T> implements Action {
         }
     }
 
-    public static flipProperties<T>(valuesEnd: ConstructorType<T>): void {
-        for (const property in valuesEnd) {
-            const propType = typeof valuesEnd[property];
+    // public static flipProperties<T>(valuesEnd: ConstructorType<T>): void {
+    //     for (const property in valuesEnd) {
+    //         const propType = typeof valuesEnd[property];
 
-            if (propType === 'object') {
-                TweenAction.flipProperties(valuesEnd[property]);
-            } else if (propType === 'number') {
-                valuesEnd[property] = -valuesEnd[property];
-            }
-        }
-    }
+    //         if (propType === 'object') {
+    //             TweenAction.flipProperties(valuesEnd[property]);
+    //         } else if (propType === 'number') {
+    //             valuesEnd[property] = -valuesEnd[property];
+    //         }
+    //     }
+    // }
 }
 
 class DelayAction implements Action {
@@ -312,11 +312,11 @@ class CallAction extends CallFunction implements Action {
 class TweenSetAction<T> extends TargetAction<T> {
     protected lerpFunction: LerpFunction<T> = this.lerpProperty.bind(this);
 
-    public onReverse(): void {
-        let temp = this.valuesStart;
-        this.valuesStart = this.valuesEnd;
-        this.valuesEnd = temp;
-    }
+    // public onReverse(): void {
+    // let temp = this.valuesStart;
+    // this.valuesStart = this.valuesEnd;
+    // this.valuesEnd = temp;
+    // }
 
     public onUpdate(deltaTime: number): boolean {
         TargetAction.updateProperties(this.target, this.valuesStart, this.valuesEnd, undefined, this.lerpFunction, undefined);
@@ -405,14 +405,14 @@ class TweenAction<T> extends TargetAction<T> {
 
 class TweenByAction<T> extends TweenAction<T> {
 
-    public onStart(): void {
-        super.onStart();
-        this.setupProperties();
-    }
+    // public onStart(): void {
+    //     super.onStart();
+    // this.setupProperties();
+    // }
 
-    public onReverse(): void {
-        TargetAction.flipProperties(this.valuesEnd);
-    }
+    // public onReverse(): void {
+    // TargetAction.flipProperties(this.valuesEnd);
+    // }
 
     protected setupValueFunction(value: number): number {
         return 0;
@@ -428,9 +428,13 @@ class TweenByAction<T> extends TweenAction<T> {
 class TweenManager {
     private lastTime: number;
     private tweenList: XTween<UnknownProps>[] = [];
-    public updateTweens = () => {
-        this.lastTime = Date.now() * XTween.TIME_UNIT;
-        this.updateTweens = this.update.bind(this);
+    public updateTweens = (time: number) => {
+        this.lastTime = time;
+        this.updateTweens = (time: number) => {
+            let deltaTime = time - this.lastTime;
+            this.update(deltaTime * XTween.TIME_UNIT);
+            this.lastTime = time;
+        }
     };
 
     public add(tween: XTween<UnknownProps>): void {
@@ -470,10 +474,7 @@ class TweenManager {
         this.tweenList.length = 0;
     }
 
-    private update(time: number = Date.now() * XTween.TIME_UNIT): void {
-        let deltaTime = time - this.lastTime;
-        this.lastTime = time;
-
+    private update(deltaTime: number): void {
         for (let i = this.tweenList.length - 1; i >= 0; i--) {
             let tween = this.tweenList[i];
             if (tween == null)
@@ -545,6 +546,7 @@ export class XTween<T extends Object> {
     public get target(): T { return this._target; }
     private readonly actionList: Action[] = [];
     private repeatCount: number = 0;
+    private repeatStep: number = 1;
     private indexAction: number;
     private _timeScale: number = 1;
     public get timeScale(): number { return this._timeScale; }
@@ -722,7 +724,6 @@ export class XTween<T extends Object> {
         this.isReversed = false;
         this._isPlaying = true;
         this._isPaused = false;
-        this.repeatCount = 0;
         this._intializeActions();
         this._startActions();
         if (!tweenManager.containerTween(this))
@@ -731,10 +732,10 @@ export class XTween<T extends Object> {
     }
 
     public reverse(): XTween<T> {
-        if (this.isReversed) return;
+        // if (this.isReversed) return;
         this._isPlaying = true;
         this._isPaused = false;
-        this._reverseActions();
+        this._reverseTween();
         if (!tweenManager.containerTween(this))
             tweenManager.add(this);
         return this;
@@ -791,17 +792,33 @@ export class XTween<T extends Object> {
      * 初始化所有Action，这是内部函数，请不要外部调用
      */
     _intializeActions(): void {
-        this.indexAction = 0;
         if (this.actionList.length > 0)
             this.actionList[0].onInitialize();
+    }
+
+    _startTween(): void {
+        this.repeatCount = 0;
+        this.repeatStep = 1;
+        this._startActions();
     }
 
     /**
      * 开始所有Action，这是内部函数，请不要外部调用
      */
     _startActions(): void {
+        this.indexAction = 0;
         if (this.actionList.length > 0)
             this.actionList[0].onStart();
+    }
+
+    _reverseTween(): void {
+        this.repeatStep = -this.repeatStep;
+        this.repeatCount += this.repeatStep;
+        // if (this.repeatCount >= this.repeatTimes)
+        //     this.repeatCount = this.repeatTimes - 1;
+        // else if (this.repeatCount < 0)
+        //     this.repeatCount = 0;
+        this._reverseActions();
     }
 
     /**
@@ -809,7 +826,6 @@ export class XTween<T extends Object> {
      */
     _reverseActions(): void {
         this.isReversed = !this.isReversed;
-        this.repeatCount = 0;
         if (this.indexAction >= this.actionList.length)
             this.indexAction = this.actionList.length - 1;
         else if (this.indexAction < 0)
@@ -823,17 +839,24 @@ export class XTween<T extends Object> {
      * @returns 返回true表示继续执行所有Action。false表示不需要再执行了，从父级中删除。
      */
     _updateActions(deltaTime: number): boolean {
-        let result = this.updateActions(deltaTime);
-        if (!result) return false;
-        result = this.repeatCount < this.repeatTimes;
-        if (result) {
-            if (this.pingPong)
-                this._reverseActions();
-            this._intializeActions();
+        if (this.updateActions(deltaTime)) return true;
+
+        this.repeatCount += this.repeatStep;
+        if (!this.checkRepeatCount()) return false;
+
+        if (this.pingPong) {
+            this._reverseActions();
+        } else {
             this._startActions();
-            this.repeatCount++;
         }
-        return this.repeatCount >= this.repeatTimes;
+        // this._intializeActions();
+        // this._startActions();
+        console.log("repeatCount", this.repeatCount, this.repeatStep);
+        return true;
+    }
+
+    private checkRepeatCount(): boolean {
+        return this.repeatStep < 0 ? this.repeatCount >= 0 : this.repeatCount < this.repeatTimes;
     }
 
     private checkIndexActions(): boolean {
@@ -841,21 +864,21 @@ export class XTween<T extends Object> {
     }
 
     private updateActions(deltaTime: number): boolean {
-        if (this.isReversed) deltaTime = -deltaTime;
+        if (!this.checkIndexActions()) return false;
 
-        if (this.checkIndexActions()) {
-            let action = this.actionList[this.indexAction];
-            if (action.onUpdate(deltaTime * this.timeScale))
-                return true;
-            action.onCompleted();
-            this.isReversed ? this.indexAction-- : this.indexAction++;
-            let nextAction = this.actionList[this.indexAction];
-            if (nextAction != null) {
-                nextAction.onInitialize();
-                nextAction.onStart();
-            }
-        }
-        return this.checkIndexActions();
+        if (this.isReversed) deltaTime = -deltaTime;
+        let action = this.actionList[this.indexAction];
+        if (action.onUpdate(deltaTime * this.timeScale))
+            return true;
+        action.onCompleted();
+
+        this.isReversed ? this.indexAction-- : this.indexAction++;
+        if (!this.checkIndexActions()) return false;
+
+        let nextAction = this.actionList[this.indexAction];
+        nextAction.onInitialize();
+        nextAction.onStart();
+        return true;
     }
 
     /**
@@ -876,6 +899,11 @@ export class XTween<T extends Object> {
     public static to<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
         return new XTween(target).to(duration, properties, options);
     }
+
+    public static by<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
+        return new XTween(target).by(duration, properties, options);
+    }
+
     /**
      * 创建一个重复执行的Tween
      * @param repeatTimes 重复次数，无限次数使用Infinity
@@ -922,11 +950,9 @@ export class XTween<T extends Object> {
 
     /**
      * Tween的更新函数
-     * @example
-     * setInterval(XTween.updateTweens, 1);
      */
-    public static updateTweens(): void {
-        tweenManager.updateTweens();
+    public static updateTweens(time: number = Date.now()): void {
+        tweenManager.updateTweens(time);
     }
 }
 
@@ -1013,12 +1039,12 @@ class ParallelAction<T> implements Action {
 
     public onStart(): void {
         for (let tween of this.tweens)
-            tween._startActions();
+            tween._startTween();
     }
 
     public onReverse(): void {
         for (let tween of this.tweens)
-            tween._reverseActions();
+            tween._reverseTween();
     }
 
     public onUpdate(deltaTime: number): boolean {
