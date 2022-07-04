@@ -10,6 +10,8 @@ type InterpolationFunction = (start: number, end: number, ratio: number) => numb
 type LerpFunction<T> = (target: T, property: string, valuesStart: ConstructorType<T>, start: number, end: number, ratio: number, interpolation: InterpolationFunction) => void;
 type EasingFunction = (amount: number) => number;
 
+type StartType = "start" | "end" | "reverse";
+
 type EasingType = "linear" | "quadraticIn" | "quadraticOut" | "quadraticInOut" | "cubicIn" | "cubicOut" | "cubicInOut" | "quarticIn" | "quarticOut" | "quarticInOut"
     | "quinticIn" | "quinticOut" | "quinticInOut" | "sinusoidalIn" | "sinusoidalOut" | "sinusoidalInOut" | "exponentialIn" | "exponentialOut" | "exponentialInOut"
     | "circularIn" | "circularOut" | "circularInOut" | "elasticIn" | "elasticOut" | "elasticInOut" | "backIn" | "backOut" | "backInOut" | "bounceIn" | "bounceOut" | "bounceInOut";
@@ -192,8 +194,7 @@ class CallFunction {
 
 interface Action {
     onInitialize(): void;
-    onStart(): void;
-    onReverse(): void;
+    onStart(type: StartType): void;
     onUpdate(deltaTime: number): boolean;
     onCompleted(): void;
     onCleared(): void;
@@ -212,9 +213,7 @@ abstract class TargetAction<T> implements Action {
             this.setupProperties();
         }
     }
-    public onReverse(): void { }
-
-    public onStart(): void { }
+    public onStart(type: StartType): void { }
     public abstract onUpdate(deltaTime: number): boolean;
     public onCompleted(): void { }
     public onCleared(): void { }
@@ -276,13 +275,19 @@ class DelayAction implements Action {
 
     public onInitialize(): void { }
 
-    public onStart(): void {
-        this.elapsedTime = 0;
-    }
-
-    public onReverse(): void {
-        if (this.elapsedTime > this.duration)
-            this.elapsedTime = this.duration;
+    public onStart(type: StartType): void {
+        switch (type) {
+            case "start":
+                this.elapsedTime = 0;
+                break;
+            case "end":
+                this.elapsedTime = this.duration;
+                break;
+            case "reverse":
+                if (this.elapsedTime > this.duration)
+                    this.elapsedTime = this.duration;
+                break;
+        }
     }
 
     public onUpdate(deltaTime: number): boolean {
@@ -297,8 +302,7 @@ class DelayAction implements Action {
 class CallAction extends CallFunction implements Action {
 
     public onInitialize(): void { }
-    public onStart(): void { }
-    public onReverse(): void { }
+    public onStart(type: StartType): void { }
 
     public onUpdate(deltaTime: number): boolean {
         this.call();
@@ -358,8 +362,21 @@ class TweenAction<T> extends TargetAction<T> {
         }
     }
 
-    public onStart(): void {
-        this.elapsedTime = 0;
+    public onStart(type: StartType): void {
+        switch (type) {
+            case "start":
+                this.elapsedTime = 0;
+                break;
+            case "end":
+                this.elapsedTime = this.duration;
+                break;
+            case "reverse":
+                if (this.elapsedTime > this.duration)
+                    this.elapsedTime = this.duration;
+                else if (this.elapsedTime < 0)
+                    this.elapsedTime = 0;
+                break;
+        }
         this.options.onStart?.(this.target);
     }
 
@@ -725,7 +742,7 @@ export class XTween<T extends Object> {
         this._isPlaying = true;
         this._isPaused = false;
         this._intializeActions();
-        this._startActions();
+        this._startActions("start");
         if (!tweenManager.containerTween(this))
             tweenManager.add(this);
         return this;
@@ -796,19 +813,19 @@ export class XTween<T extends Object> {
             this.actionList[0].onInitialize();
     }
 
-    _startTween(): void {
+    _startTween(type: StartType): void {
         this.repeatCount = 0;
         this.repeatStep = 1;
-        this._startActions();
+        this._startActions(type);
     }
 
     /**
      * 开始所有Action，这是内部函数，请不要外部调用
      */
-    _startActions(): void {
+    _startActions(type: StartType): void {
         this.indexAction = 0;
         if (this.actionList.length > 0)
-            this.actionList[0].onStart();
+            this.actionList[0].onStart(type);
     }
 
     _reverseTween(): void {
@@ -831,7 +848,7 @@ export class XTween<T extends Object> {
         else if (this.indexAction < 0)
             this.indexAction = 0;
         for (let action of this.actionList)
-            action.onReverse();
+            action.onStart("reverse");
     }
 
     /**
@@ -847,7 +864,7 @@ export class XTween<T extends Object> {
         if (this.pingPong) {
             this._reverseActions();
         } else {
-            this._startActions();
+            this._startActions(this.isReversed ? "end" : "start");
         }
         // this._intializeActions();
         // this._startActions();
@@ -877,7 +894,7 @@ export class XTween<T extends Object> {
 
         let nextAction = this.actionList[this.indexAction];
         nextAction.onInitialize();
-        nextAction.onStart();
+        nextAction.onStart("start");
         return true;
     }
 
@@ -1037,15 +1054,15 @@ class ParallelAction<T> implements Action {
             tween._intializeActions();
     }
 
-    public onStart(): void {
+    public onStart(type: StartType): void {
         for (let tween of this.tweens)
-            tween._startTween();
+            tween._startTween(type);
     }
 
-    public onReverse(): void {
-        for (let tween of this.tweens)
-            tween._reverseTween();
-    }
+    // public onReverse(): void {
+    //     for (let tween of this.tweens)
+    //         tween._reverseTween();
+    // }
 
     public onUpdate(deltaTime: number): boolean {
         for (let i = this.updateTweens.length - 1; i >= 0; i--) {

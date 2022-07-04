@@ -57,7 +57,7 @@
             }
         });
 
-        let tween = new XTween(target, 2, false).to(2.2, { x: 470, angle: 360 }, { easing: "circularInOut" });
+        let tween = new XTween(target, 2, true).to(2.2, { x: 470, angle: 360 }, { easing: "circularInOut" });
 
         document.querySelector("#play").onclick = () => tween.start();
         document.querySelector("#pause").onclick = () => tween.pause();
