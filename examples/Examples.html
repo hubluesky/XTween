@@ -28,6 +28,7 @@
 
     <script type="module">
         import { XTween } from "../dist/XTween.js";
+
         let updateXTween = function () {
             XTween.updateTweens();
             requestAnimationFrame(updateXTween);
@@ -57,7 +58,21 @@
             }
         });
 
-        let tween = new XTween(target, 2, true).to(2.2, { x: 470, angle: 360 }, { easing: "circularInOut" });
+        let width = 470;
+        let repeatTween = new XTween(target, 1, true)
+            .set({ angle: 45 })
+            .to(1.2, { x: width / 2 }, { easing: "circularInOut" })
+            .to(0.5, { angle: 100 })
+            .to(1.2, { x: width }, { easing: "circularInOut" })
+            .set({ angle: 0 }).delay(0.5)
+            .onFinally(() => console.log("ffffffffff"))
+
+        let tween = new XTween(target).to(0.5, { angle: 360 }).add(repeatTween).to(1.35, { angle: -360 });
+        // tween = repeatTween;
+        // .delay(1);
+
+        // new XTween({}).call(()=> console.log("start")).delay(1).call(()=> console.log("end"))
+        //     .onFinally(()=> console.log("finally")).start();
 
         document.querySelector("#play").onclick = () => tween.start();
         document.querySelector("#pause").onclick = () => tween.pause();

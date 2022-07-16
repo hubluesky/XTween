@@ -25,7 +25,7 @@ let target2 = new Target();
 let call = () => {
     console.log("finally call ");
 };
-new XTween({}).onFinally(call).start();
+new XTween({}).onFinally(call).to(target, 2, {}).start();
 
 // xtween(target).to(1, { alpha: 2 }, {
 //     onUpdate: () => {

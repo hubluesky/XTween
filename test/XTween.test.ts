@@ -2,29 +2,14 @@ import { XTween } from "../src/XTween";
 
 const frameInterval = 88;
 let timer: NodeJS.Timer;
-let frameCount = 0;
-let lastDeltaTime: number = 0;
-let curDeltaTime: number = 0;
-let curTime: number = 0;
-let totalTime: number = 0;
+
 function startUpdateXTween() {
-    let lastTime = Date.now();
-    console.log("startUpdateXTween", lastTime / 1000);
     XTween.TIME_UNIT = 1;
     timer = setInterval(function () {
-        frameCount++;
-        lastDeltaTime = curDeltaTime;
-        curTime = Date.now();
-        curDeltaTime = curTime - lastTime;
-        lastTime = curTime;
-        totalTime += curDeltaTime;
-
-        // console.log("updateTweens ", curDeltaTime);
         XTween.updateTweens();
     }, frameInterval);
 }
 function stopUpdateXTween() {
-    console.log("stopUpdateXTween", frameCount, totalTime / 1000);
     clearInterval(timer);
 }
 
@@ -52,7 +37,7 @@ afterAll(() => {
 test('empty xtween', () => {
     let obj = {};
     let t = new XTween(obj);
-    expect(t.target).toEqual(obj);
+    expect(t.tag).toEqual(obj);
     expect(t.repeatTimes).toBe(0);
     expect(t.pingPong).toBeFalsy();
     expect(t.timeScale).toBe(1);
@@ -63,8 +48,8 @@ test('empty xtween', () => {
 test("finally call xtween", () => {
     const mockCall = jest.fn();
     new XTween({}).onFinally(mockCall).start();
-    jest.advanceTimersByTime(frameInterval);
-    expect(mockCall).toHaveBeenCalled();
+    jest.advanceTimersByTime(frameInterval * 10);
+    expect(mockCall).toBeCalledTimes(1);
 });
 
 test('xtween repeat init value', () => {
@@ -74,19 +59,19 @@ test('xtween repeat init value', () => {
 });
 
 test('xtween playing value', () => {
-    let t = new XTween({}).start();
+    let t = new XTween({}).delay(frameInterval).start();
     expect(t.isPlaying).toBeTruthy();
     expect(t.isPaused).toBeFalsy();
 });
 
 test('xtween pause value', () => {
-    let t = new XTween({}).start().pause();
+    let t = new XTween({}).delay(frameInterval).start().pause();
     expect(t.isPlaying).toBeFalsy();
     expect(t.isPaused).toBeTruthy();
 });
 
 test('xtween resume value', () => {
-    let t = new XTween({}).start().pause().resume();
+    let t = new XTween({}).delay(frameInterval).start().pause().resume();
     expect(t.isPlaying).toBeTruthy();
     expect(t.isPaused).toBeFalsy();
 });
@@ -98,15 +83,13 @@ test('xtween stop value', () => {
 });
 
 test('xtween stop restart value', () => {
-    let t = new XTween({}).stop().start();
+    let t = new XTween({}).delay(frameInterval).stop().start();
     expect(t.isPlaying).toBeTruthy();
     expect(t.isPaused).toBeFalsy();
 });
 
 test('xtween call', () => {
-    let call = () => {
-        console.log(" call ");
-    };
+    let call = () => { };
 
     const mockCall = jest.fn().mockImplementation(call);
     let t = new XTween({}).call(mockCall).start();
@@ -128,4 +111,94 @@ test("xtween by", () => {
     XTween.by(obj, duration, { x: 30 }).start();
     jest.advanceTimersByTime(duration + frameInterval);
     expect(obj.x).toEqual(35);
+});
+
+test("xtween to time", () => {
+    for (let i = 1; i <= 1000; i++) {
+        let obj = { x: 0 };
+        XTween.to(obj, i, { x: i }).start();
+        jest.advanceTimersByTime(i + frameInterval);
+        expect(obj.x).toBe(i);
+    }
+});
+
+test("xtween 2to", () => {
+    let obj = { x: 5 };
+    XTween.to(obj, 200, { x: 30 }).to(130, { x: 40 }).start();
+    jest.advanceTimersByTime(200 + 130 + frameInterval);
+    expect(obj.x).toBe(40);
+});
+
+test("xtween delay", () => {
+    let startTime: number = 0;
+    let endTime: number = 0;
+    let delayTime = 140;
+
+    const mockStartCall = jest.fn().mockImplementation(() => startTime = Date.now());
+    const mockEndCall = jest.fn().mockImplementation(() => endTime = Date.now());
+    new XTween({}).call(mockStartCall).delay(delayTime).call(mockEndCall).start();
+    jest.advanceTimersByTime(delayTime + frameInterval); // 如果此tween是下一帧才被运行
+
+    expect(mockStartCall).toBeCalledTimes(1);
+    expect(mockEndCall).toBeCalledTimes(1);
+
+    let duration = endTime - startTime;
+    expect(duration).toBeGreaterThanOrEqual(delayTime);
+    expect(duration).toBeLessThanOrEqual(delayTime + frameInterval);
+});
+
+test("xtween repeat to", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times).to(140, { x: 30 }).to(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBe(40);
+});
+
+test("xtween repeat by", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times).by(140, { x: 30 }).by(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBeCloseTo(5 + 30 + 40);
+});
+
+test("xtween repeat from", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times).from(140, { x: 30 }).from(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBe(5);
+});
+
+test("xtween repeat pingpong to", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times, true).to(140, { x: 30 }).to(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBe(5);
+});
+
+test("xtween repeat pingpong by", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times, true).by(140, { x: 30 }).by(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBeCloseTo(5);
+});
+
+test("xtween repeat pingpong from", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times, true).from(140, { x: 30 }).from(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBe(30);
+});
+
+test("xtween inner repeat to", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times).to(140, { x: 30 }).to(230, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBe(40);
 });
