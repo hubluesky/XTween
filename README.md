@@ -4,6 +4,11 @@
 
 这是一个TypeScript的补间动画，比JS的好处来说是有类型推导，不必担心属性写错了，为什么这个动画没有起效的问题。丰富的功能与简单容易使用的接口，基本使用过一次就能记得这个便捷的使用方式。
 
+## 源代码使用
+
+下载后，需要先 `npm -install`安装jest，然后就可以运行 `npm test`运行这里面的测试用例。
+也可以运行examples里面随手写的 `Examples.html`可视化测试效果。然后自己改改想要的效果。
+
 ## 开始使用
 
 ```ts
@@ -66,7 +71,7 @@ export interface ITweenOption<T> {
 }
 ```
 
-##### 缓动类型（Easing）
+### 缓动类型（Easing）
 
 接上面的例子，如果不想这0.6秒都是线性插值的，可以使用Easing。XTween自带了10种easing，每种easing都有in、out、和inout。当然了，除了以下自带的10种easing方式，还支持自定义，只需要满足这个函数格式就行：`type EasingFunction = (amount: number) => number;`
 
@@ -85,7 +90,9 @@ export interface ITweenOption<T> {
 XTween.to(size, 0.6, { width: 150 }, { easing: "backOut" }).start();
 ```
 
-##### 内置自定义缓动类型（BezierEase和SvgPathEase）
+### 内置自定义缓动类型（BezierEase和SvgPathEase）
+
+PS：SvgPath算法是从[gsap](https://github.com/greensock/GSAP)中抄来，不过源码是js的，我照着画了个ts版本的，使用请遵守gsap开源协议。
 
 ```
 // BezierEase
@@ -100,7 +107,7 @@ XTween.to(size, 0.6, { width: 150 }, {
 }).start();
 ```
 
-##### 插值类型（`Interpolation`)
+### 插值类型（`Interpolation`)
 
 在tween计算属性补间动画的过程中，有三个值，分别是start（属性的起始值）、end（属性的结束值）、ratio（属性随时间的比例值），Easing是对缓动比例ratio进行插值，而 `Interpolation`插值是对start、end和ratio这三个数进行插值，默认是使用线性插值方式，如果有需要，也可以自定义插值方式。
 
@@ -132,7 +139,15 @@ XTween.to(size, 0.6, { width: 150 }, {
 
 ### 多个动画之间的拼接
 
-##### 连续补间动画
+```
+// 同时执行size.width和transform.rotation动画
+XTween.to(size, 0.6, { height: 250 }).add(
+    XTween.to(size, 0.6, { width: 150 }),
+    XTween.to(transform, 0.3, { rotation: 30 })
+).start();
+```
+
+### 连续补间动画
 
 如果想先做width动画后，再在1秒内把height变为300，只需要连to两下就可以了。
 
@@ -140,7 +155,7 @@ XTween.to(size, 0.6, { width: 150 }, {
 XTween.to(size, 0.6, { width: 150 }).to(1, { height: 300 }).start();
 ```
 
-##### 转变动画target
+### 转变动画target
 
 ```
 class Transform {
@@ -157,7 +172,7 @@ let transform= new Transform();
 XTween.to(size, 0.6, { width: 150 }).to(transform, 0.3, { rotation: 30 }).start();
 ```
 
-##### 重复动画
+### 重复动画
 
 ```
 // 重复执行4次
@@ -170,7 +185,7 @@ new XTween(size, Infinity, true).to(0.6, { width: 150 }).start();
 
 repeat动画会记录被重复的tween的起始值，使每一次重复都能从头开始。如果pingpong模式为true，就会在repeat一次后，被重复的tween会整个被反过来执行，比如上面的第二个动画。size对象第一次执行为：width会从“当前值”到150，然后就是height从“当前值”到100。第二次执行为：height从100到“当前值”，然后就是width从150到“当前值，如此重复。
 
-##### 并行执行多个Tween
+### 并行执行多个Tween
 
 ```
 // 同时执行size.width和transform.rotation动画
@@ -189,7 +204,7 @@ XTween.to(size, 0.6, { height: 150 }).add(
 ).to(0.5, { width: 300 }).start();
 ```
 
-##### 一些功能函数
+### 一些功能函数
 
 `setTimeScale` 当前tween的时间缩放
 
@@ -215,7 +230,7 @@ XTween.to(size, 0.6, { height: 150 }).add(
 
 `removeTagTweens` 删除目标身上所有的tween
 
-复杂示例：
+#### 复杂示例：
 
 ```ts
 new XTween(target)

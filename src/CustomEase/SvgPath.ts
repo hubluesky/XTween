@@ -1,3 +1,13 @@
+/*!
+ * CustomEase 3.10.4
+ * https://greensock.com
+ *
+ * @license Copyright 2008-2022, GreenSock. All rights reserved.
+ * Subject to the terms at https://greensock.com/standard-license or for
+ * Club GreenSock members, the agreement issued with that membership.
+ * @author: Jack Doyle, jack@greensock.com
+*/
+
 const _svgPathExp = /[achlmqstvz]|(-?\d*\.?\d*(?:e[\-+]?\d+)?)[0-9]/ig;
 const _scientific = /[\+\-]?\d*\.?\d+e[\+\-]?\d+/ig;
 const _DEG2RAD = Math.PI / 180;
