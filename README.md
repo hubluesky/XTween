@@ -115,7 +115,7 @@ XTween.to(size, 0.6, { width: 150 }, {
 XTween.to(size, 0.6, { width: 150 }, { progress: XTween.Easing.sinusoidalIn }).start();
 ```
 
-##### 回调函数
+### 回调函数
 
 回调函数分别是：
 
@@ -195,7 +195,7 @@ XTween.to(size, 0.6, { height: 150 }).add(
 ).start();
 ```
 
-内嵌重复Tween动画
+### 内嵌重复Tween动画
 
 ```
 // 先执行size.width然后重复多次transform.rotation动画，最后再执行size.width动画
@@ -207,28 +207,18 @@ XTween.to(size, 0.6, { height: 150 }).add(
 ### 一些功能函数
 
 `setTimeScale` 当前tween的时间缩放
-
+`setTag` 设置Tween的标识，方便删除时使用
 `delay` 延迟多久后执行
-
 `call` 回调函数
-
 `start` 开始Tween
-
 `restart` 重新开始Tween
-
 `reverse` 在开始Tween之后，可以倒着往回播放Tween，支持反复调用，来回正反播放。
-
 `pause` 暂停tween（只有最顶层的tween才有效果）
-
 `resume` 恢复tween（只有最顶层的tween才有效果)
-
 `stop` 停止tween
-
-`onFinally` 无论此tween是正常完成，还是中途被停止，只要停止了，就会回调此函数
-
 `set` 直接设置对象Target的属性
-
 `removeTagTweens` 删除目标身上所有的tween
+`onFinally` 无论此tween是正常完成，还是中途被停止，只要停止了，就会回调此函数
 
 #### 复杂示例：
 
