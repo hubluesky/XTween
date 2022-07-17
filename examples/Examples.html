@@ -67,7 +67,7 @@
             .set({ angle: 0 }).delay(0.5)
             .onFinally(() => console.log("ffffffffff"))
 
-        let tween = new XTween(target).to(0.5, { angle: 360 }).add(repeatTween).to(1.35, { angle: -360 });
+        let tween = new XTween(target).to(0.5, { x: 0, angle: 360 }).add(repeatTween).to(1.35, { x: width, angle: -360 });
         // tween = repeatTween;
         // .delay(1);
 

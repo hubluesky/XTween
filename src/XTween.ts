@@ -193,10 +193,11 @@ class CallFunction {
 }
 
 interface Action {
-    onStart(type: TimeAxis): void;
+    onInit?(): void;
+    onStart?(type: TimeAxis): void;
     onUpdate(deltaTime: number): boolean;
-    onCompleted(): void;
-    onCleared(): void;
+    onCompleted?(): void;
+    onCleared?(): void;
 }
 
 class DelayAction implements Action {
@@ -223,22 +224,14 @@ class DelayAction implements Action {
         this.elapsedTime += deltaTime;
         return result;
     }
-
-    public onCompleted(): void { }
-    public onCleared(): void { }
 }
 
 class CallAction extends CallFunction implements Action {
-
-    public onStart(type: TimeAxis): void { }
 
     public onUpdate(deltaTime: number): boolean {
         this.call();
         return false;
     }
-
-    public onCompleted(): void { }
-    public onCleared(): void { }
 }
 
 abstract class TargetAction<T> implements Action {
@@ -259,8 +252,6 @@ abstract class TargetAction<T> implements Action {
             this.onInitialize();
     }
     public abstract onUpdate(deltaTime: number): boolean;
-    public onCompleted(): void { }
-    public onCleared(): void { }
 
     protected setupProperties(): void {
         TargetAction.setupProperties(this.target, this.valuesStart, this.valuesEnd, this.setupValueFunction.bind(this));
@@ -311,20 +302,6 @@ class TweenSetAction<T> extends TargetAction<T> {
     protected lerpProperty(target: T, property: string, valuesStart: ConstructorType<T>, start: number, end: number, ratio: number, interpolation: InterpolationFunction) {
         target[property] = ratio < 0 ? start : end;
     }
-
-    // public static updateProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>): void {
-    //     for (const property in valuesEnd) {
-    //         const end = valuesEnd[property];
-    //         const propType = typeof valuesStart[property] ?? typeof end;
-
-    //         if (propType === 'object') {
-    //             TweenSetAction.updateProperties(target[property], valuesStart, end);
-    //             target[property] = target[property];
-    //         } else {
-    //             target[property] = end;
-    //         }
-    //     }
-    // }
 }
 
 class TweenAction<T> extends TargetAction<T> {
@@ -398,6 +375,37 @@ class TweenFromAction<T> extends TweenAction<T> {
         let valuesTemp = this.valuesStart;
         this.valuesStart = this.valuesEnd;
         this.valuesEnd = valuesTemp;
+    }
+}
+
+class ParallelAction<T> implements Action {
+    protected updateTweens: XTween<T>[];
+
+    public constructor(public readonly tweens: XTween<T>[]) { }
+
+    public onInit(): void {
+        this.updateTweens = Array.from(this.tweens);
+        for (let tween of this.tweens)
+            tween._onInit();
+    }
+
+    public onStart(type: TimeAxis): void {
+        for (let tween of this.tweens)
+            tween._onStart(type);
+    }
+
+    public onUpdate(deltaTime: number): boolean {
+        deltaTime = Math.abs(deltaTime);
+        for (let i = this.updateTweens.length - 1; i >= 0; i--) {
+            if (!this.updateTweens[i]._updateTween(deltaTime))
+                this.updateTweens.splice(i, 1);
+        }
+        return this.updateTweens.length > 0;
+    }
+
+    public onCleared(): void {
+        for (let tween of this.tweens)
+            tween._clear();
     }
 }
 
@@ -742,8 +750,7 @@ export class XTween<T extends Object> {
         } else {
             this._isPlaying = true;
             this._isPaused = false;
-            this.repeatCount = 1;
-            this.indexAction = 0;
+            this._onInit();
             this._onStart("forward");
             if (!tweenManager.containerTween(this))
                 tweenManager.add(this);
@@ -766,6 +773,13 @@ export class XTween<T extends Object> {
                 tweenManager.add(this);
         }
         return this;
+    }
+
+    _onInit(): void {
+        this.repeatCount = 1;
+        this.indexAction = 0;
+        for (let action of this.actionList)
+            action.onInit?.();
     }
 
     _onStart(type: TimeAxis): void {
@@ -839,7 +853,7 @@ export class XTween<T extends Object> {
         //         break;
         // }
         // if (this.actionList.length > 0)
-        this.actionList[this.indexAction]?.onStart(type);
+        this.actionList[this.indexAction]?.onStart?.(type);
     }
 
     // private _reverseTween(): void {
@@ -866,7 +880,7 @@ export class XTween<T extends Object> {
      */
     _updateTween(deltaTime: number): boolean {
         if (this.updateActions(this.timeAxis == "forward" ? deltaTime : -deltaTime)) return true;
-        console.log("repeatCount", this.timeAxis, this.repeatCount);
+        // console.log("repeatCount", this.timeAxis, this.repeatCount);
         if (!this.checkRepeatCount()) return false;
         this.repeatCount += this.repeatStep;
 
@@ -882,14 +896,14 @@ export class XTween<T extends Object> {
         let action = this.actionList[this.indexAction];
         if (action.onUpdate(deltaTime * this.timeScale))
             return true;
-        action.onCompleted();
+        action.onCompleted?.();
 
-        console.log("indexAction", this.timeAxis, this.indexAction, this.actionList.length);
+        // console.log("indexAction", this.timeAxis, this.indexAction, this.actionList.length);
         if (!this.checkIndexActions()) return false;
         this.timeAxis == "forward" ? this.indexAction++ : this.indexAction--;
 
         let nextAction = this.actionList[this.indexAction];
-        nextAction.onStart(this.timeAxis);
+        nextAction.onStart?.(this.timeAxis);
         return this.updateActions(deltaTime);
     }
 
@@ -898,7 +912,7 @@ export class XTween<T extends Object> {
      */
     _clear(): void {
         for (let action of this.actionList)
-            action.onCleared();
+            action.onCleared?.();
         this._isPlaying = false;
         this._isPaused = false;
         if (this.onFinallyFunc != null) {
@@ -974,141 +988,3 @@ export class XTween<T extends Object> {
         tweenManager.updateTweens(time);
     }
 }
-
-// class ThenAction<T> implements Action<T> {
-
-//     public constructor(readonly tween: XTween<T>) { }
-
-//     public onInitialize(target: T): void {
-//         this.tween._intializeActions();
-//     }
-
-//     public onStart(target: T): void {
-//         this.tween._startActions();
-//     }
-
-//     public reverseValues(target: T): void {
-//         this.tween._reverseActions();
-//     }
-
-//     public onUpdate(target: T, deltaTime: number): boolean {
-//         return this.tween._updateActions(deltaTime);
-//     }
-
-//     public onCompleted(target: T): void { }
-
-//     public onCleared(): void {
-//         this.tween._clear();
-//     }
-// }
-
-// class SequenceAction<T> implements Action<T> {
-//     protected currentIndex: number = 0;
-
-//     public constructor(readonly tweens: XTween<T>[]) { }
-
-//     public onInitialize(target: T): void {
-//         this.currentIndex = 0;
-//         this.tweens[this.currentIndex]._intializeActions();
-//     }
-
-//     public onStart(target: T): void {
-//         this.tweens[this.currentIndex]._startActions();
-//     }
-
-//     public reverseValues(target: T): void {
-//         this.tweens.reverse();
-//         for (let tween of this.tweens)
-//             tween._reverseActions();
-//     }
-
-//     public onUpdate(target: T, deltaTime: number): boolean {
-//         if (this.currentIndex < this.tweens.length) {
-//             let tween = this.tweens[this.currentIndex];
-//             if (!tween._updateActions(deltaTime))
-//                 return false;
-//             this.currentIndex++;
-//             if (this.currentIndex < this.tweens.length) {
-//                 let nextTween = this.tweens[this.currentIndex];
-//                 nextTween._intializeActions();
-//                 nextTween._startActions();
-//             }
-//         }
-//         return this.currentIndex >= this.tweens.length;
-//     }
-
-//     public onCompleted(target: T): void { }
-
-//     public onCleared(): void {
-//         for (let tween of this.tweens)
-//             tween._clear();
-//     }
-// }
-
-class ParallelAction<T> implements Action {
-    protected updateTweens: XTween<T>[];
-
-    public constructor(public readonly tweens: XTween<T>[]) { }
-
-    public onStart(type: TimeAxis): void {
-        this.updateTweens = Array.from(this.tweens);
-        for (let tween of this.tweens)
-            tween._onStart(type);
-    }
-
-    public onUpdate(deltaTime: number): boolean {
-        deltaTime = Math.abs(deltaTime);
-        for (let i = this.updateTweens.length - 1; i >= 0; i--) {
-            if (!this.updateTweens[i]._updateTween(deltaTime))
-                this.updateTweens.splice(i, 1);
-        }
-        return this.updateTweens.length > 0;
-    }
-
-    public onCompleted(): void { }
-
-    public onCleared(): void {
-        for (let tween of this.tweens)
-            tween._clear();
-    }
-}
-
-// class RepeatAction<T> implements Action<T> {
-//     protected repeatCount: number = 0;
-
-//     public constructor(readonly repeatTimes: number, readonly pingPong: boolean, readonly repeatTween: XTween<T>) {
-//         // this.repeatTimes = repeatTimes;
-//         // this.pingPong = pingPong;
-//         // this.repeatTween = repeatTween;
-//     }
-
-//     public onInitialize(target: T): void {
-//         this.repeatTween._intializeActions();
-//     }
-
-//     public onStart(target: T): void {
-//         this.repeatCount = 0;
-//         this.repeatTween._startActions();
-//     }
-
-//     public reverseValues(target: T): void {
-//         this.repeatTween._reverseActions();
-//     }
-
-//     public onUpdate(target: T, deltaTime: number): boolean {
-//         if (this.repeatTween._updateActions(deltaTime)) {
-//             if (this.pingPong)
-//                 this.repeatTween._reverseActions();
-//             this.repeatTween._intializeActions();
-//             this.repeatTween._startActions();
-//             this.repeatCount++;
-//         }
-//         return this.repeatCount >= this.repeatTimes;
-//     }
-
-//     public onCompleted(target: T): void { }
-
-//     public onCleared(): void {
-//         this.repeatTween._clear();
-//     }
-// }
