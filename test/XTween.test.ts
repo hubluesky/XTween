@@ -147,6 +147,14 @@ test("xtween delay", () => {
     expect(duration).toBeLessThanOrEqual(delayTime + frameInterval);
 });
 
+test("xtween repeat fromTo", () => {
+    let obj = { x: 5 };
+    let times = 4;
+    new XTween(obj, times).fromTo(230, { x: 0 }, { x: 40 }).start();
+    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    expect(obj.x).toBe(40);
+});
+
 test("xtween repeat to", () => {
     let obj = { x: 5 };
     let times = 4;
@@ -155,7 +163,7 @@ test("xtween repeat to", () => {
     expect(obj.x).toBe(40);
 });
 
-test("xtween repeat by", () => {
+test("xtween repeat by 2", () => {
     let obj = { x: 5 };
     let times = 4;
     new XTween(obj, times).by(140, { x: 30 }).by(230, { x: 40 }).start();
@@ -163,7 +171,7 @@ test("xtween repeat by", () => {
     expect(obj.x).toBeCloseTo(5 + 30 + 40);
 });
 
-test("xtween repeat from", () => {
+test("xtween repeat from 2", () => {
     let obj = { x: 5 };
     let times = 4;
     new XTween(obj, times).from(140, { x: 30 }).from(230, { x: 40 }).start();
@@ -171,7 +179,7 @@ test("xtween repeat from", () => {
     expect(obj.x).toBe(5);
 });
 
-test("xtween repeat pingpong to", () => {
+test("xtween repeat pingpong to 2", () => {
     let obj = { x: 5 };
     let times = 4;
     new XTween(obj, times, true).to(140, { x: 30 }).to(230, { x: 40 }).start();
@@ -179,7 +187,7 @@ test("xtween repeat pingpong to", () => {
     expect(obj.x).toBe(5);
 });
 
-test("xtween repeat pingpong by", () => {
+test("xtween repeat pingpong by 2", () => {
     let obj = { x: 5 };
     let times = 4;
     new XTween(obj, times, true).by(140, { x: 30 }).by(230, { x: 40 }).start();
@@ -187,7 +195,7 @@ test("xtween repeat pingpong by", () => {
     expect(obj.x).toBeCloseTo(5);
 });
 
-test("xtween repeat pingpong from", () => {
+test("xtween repeat pingpong from 2", () => {
     let obj = { x: 5 };
     let times = 4;
     new XTween(obj, times, true).from(140, { x: 30 }).from(230, { x: 40 }).start();
@@ -196,9 +204,13 @@ test("xtween repeat pingpong from", () => {
 });
 
 test("xtween inner repeat to", () => {
-    let obj = { x: 5 };
+    let obj = { x: 5, angle: 0 };
     let times = 4;
-    new XTween(obj, times).to(140, { x: 30 }).to(230, { x: 40 }).start();
-    jest.advanceTimersByTime((140 + 230) * times + frameInterval);
+    XTween.to(obj, 50, { angle: 360 }).add(
+        new XTween(obj, times).to(140, { x: 30 }).to(230, { x: 40 })
+    ).to(47, { angle: -340 }).start();
+    jest.advanceTimersByTime(50 + (140 + 230) * times + 47 + frameInterval);
     expect(obj.x).toBe(40);
+    expect(obj.angle).toBe(-340);
 });
+
