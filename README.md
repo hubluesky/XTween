@@ -9,7 +9,7 @@
 下载后，需要先 `npm -install`安装jest，然后就可以运行 `npm test`运行这里面的测试用例。
 也可以运行examples里面随手写的 `Examples.html`可视化测试效果。然后自己改改想要的效果。
 
-## 开始使用
+### 开始使用
 
 ```ts
 class Size {
@@ -71,7 +71,7 @@ export interface ITweenOption<T> {
 }
 ```
 
-### 缓动类型（Easing）
+### 缓动类型（`Easing`）
 
 接上面的例子，如果不想这0.6秒都是线性插值的，可以使用Easing。XTween自带了10种easing，每种easing都有in、out、和inout。当然了，除了以下自带的10种easing方式，还支持自定义，只需要满足这个函数格式就行：`type EasingFunction = (amount: number) => number;`
 
@@ -90,7 +90,7 @@ export interface ITweenOption<T> {
 XTween.to(size, 0.6, { width: 150 }, { easing: "backOut" }).start();
 ```
 
-### 内置自定义缓动类型（BezierEase和SvgPathEase）
+### 自定义缓动类型（`BezierEase`和`SvgPathEase`）
 
 PS：SvgPath算法是从[gsap](https://github.com/greensock/GSAP)中抄来，不过源码是js的，我照着画了个ts版本的，使用请遵守gsap开源协议。
 
@@ -220,7 +220,7 @@ XTween.to(size, 0.6, { height: 150 }).add(
 `removeTagTweens` 删除目标身上所有的tween
 `onFinally` 无论此tween是正常完成，还是中途被停止，只要停止了，就会回调此函数
 
-#### 复杂示例：
+### 复杂示例：
 
 ```ts
 new XTween(target)
