@@ -242,7 +242,7 @@ abstract class TargetAction<T> implements Action {
         this.valuesEnd = Object.assign({}, properties);
     }
 
-    public onInitialize(): void {
+    protected onInitialize(): void {
         this.valuesStart = {};
         this.setupProperties();
     }
@@ -370,11 +370,19 @@ class TweenByAction<T> extends TweenAction<T> {
 
 class TweenFromAction<T> extends TweenAction<T> {
 
-    public onInitialize(): void {
+    protected onInitialize(): void {
         super.onInitialize();
         let valuesTemp = this.valuesStart;
         this.valuesStart = this.valuesEnd;
         this.valuesEnd = valuesTemp;
+    }
+}
+
+class TweenFromToAction<T> extends TweenAction<T> {
+
+    public constructor(target: T, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T>, duration: number, options?: ITweenOption<T>) {
+        super(target, toProperties, duration, options);
+        this.valuesStart = Object.assign({}, fromProperties);
     }
 }
 
@@ -384,12 +392,12 @@ class ParallelAction<T> implements Action {
     public constructor(public readonly tweens: XTween<T>[]) { }
 
     public onInit(): void {
-        this.updateTweens = Array.from(this.tweens);
         for (let tween of this.tweens)
             tween._onInit();
     }
 
     public onStart(type: TimeAxis): void {
+        this.updateTweens = Array.from(this.tweens);
         for (let tween of this.tweens)
             tween._onStart(type);
     }
@@ -598,10 +606,10 @@ export class XTween<T extends Object> {
     public to<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T>;
 
     public to<T>(target: T | number, duration: number | ConstructorType<T>, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
-        if (typeof target === "object")
-            return this._to(this.taget = target, duration as number, properties as ConstructorType<T>, options);
-        else
+        if (typeof target === "number")
             return this._to(this.taget, target as number, duration as ConstructorType<T>, properties);
+        else
+            return this._to(this.taget = target, duration as number, properties as ConstructorType<T>, options);
     }
 
     private _to<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
@@ -629,10 +637,10 @@ export class XTween<T extends Object> {
     public from<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T>;
 
     public from<T>(target: T | number, duration: number | ConstructorType<T>, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
-        if (typeof target === "object")
-            return this._from(this.taget = target, duration as number, properties as ConstructorType<T>, options);
-        else
+        if (typeof target === "number")
             return this._from(this.taget, target as number, duration as ConstructorType<T>, properties);
+        else
+            return this._from(this.taget = target, duration as number, properties as ConstructorType<T>, options);
     }
 
     private _from<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
@@ -640,6 +648,40 @@ export class XTween<T extends Object> {
         this.actionList.push(action);
         return this as unknown as XTween<T>;
     }
+
+    /**
+     * 对目标对象属性进行补间动作
+     * @param duration 补间时长
+     * @param fromProperties 起始属性集
+     * @param toProperties 终止属性集
+     * @param options 补间可选参数
+     * @returns 返回当前补间动画实例
+     */
+    public fromTo(duration: number, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T>;
+    /**
+     * 对目标对象属性进行补间动作
+     * @param target 目标
+     * @param duration 补间时长
+     * @param fromProperties 起始属性集
+     * @param toProperties 终止属性集
+     * @param options 补间可选参数
+     * @returns 返回当前补间动画实例
+     */
+    public fromTo<T extends Object>(target: T, duration: number, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T>;
+
+    public fromTo<T>(target: T | number, duration: number | ConstructorType<T>, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T> | ITweenOption<T>, options?: ITweenOption<T>): XTween<T> {
+        if (typeof target === "number")
+            return this._fromTo(this.taget, target, duration as ConstructorType<T>, fromProperties, toProperties);
+        else
+            return this._fromTo(this.taget = target, duration as number, fromProperties, toProperties as ConstructorType<T>, options);
+    }
+
+    private _fromTo<T extends Object>(target: T, duration: number, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
+        const action = new TweenFromToAction(target, fromProperties, toProperties, duration, options);
+        this.actionList.push(action);
+        return this as unknown as XTween<T>;
+    }
+
 
     /**
       * 对目标对象属性进行补间动作
@@ -659,11 +701,11 @@ export class XTween<T extends Object> {
       */
     public by<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T>;
 
-    public by<T>(target: T | number, duration: number | ConstructorType<T>, properties: ConstructorType<T> | ITweenOption<T>, options?: ITweenOption<T>): XTween<T> {
-        if (typeof target === "object")
-            return this._by(this.taget = target, duration as number, properties as ConstructorType<T>, options);
+    public by<T, P extends ConstructorType<T>>(target: T | number, duration: number | P, properties: P | ITweenOption<T>, options?: ITweenOption<T>): XTween<T> {
+        if (typeof target === "number")
+            return this._by(this.taget, target, duration as ConstructorType<T>, properties);
         else
-            return this._by(this.taget, target as number, duration as ConstructorType<T>, properties);
+            return this._by(this.taget = target, duration as number, properties as ConstructorType<T>, options);
     }
 
     private _by<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
@@ -783,7 +825,7 @@ export class XTween<T extends Object> {
     }
 
     _onStart(type: TimeAxis): void {
-        this.timeAxis == "forward" ? this.repeatStep = +1 : this.repeatStep = -1;
+        this.repeatStep = type == "forward" ? +1 : -1;
         this._startActions(type);
     }
 
@@ -834,45 +876,13 @@ export class XTween<T extends Object> {
         return this;
     }
 
-    // _startTween(type: StartType): void {
-    //     this.repeatCount = this.repeatStep = 1;
-    //     this._startActions(type);
-    // }
-
     /**
      * 开始Action，这是内部函数，请不要外部调用
      */
     private _startActions(type: TimeAxis): void {
         this.timeAxis = type;
-        // switch (type) {
-        //     case "forward":
-        //         // this.indexAction = 0;
-        //         break;
-        //     case "inverse":
-        //         // this.indexAction = this.actionList.length - 1;
-        //         break;
-        // }
-        // if (this.actionList.length > 0)
-        this.actionList[this.indexAction]?.onStart?.(type);
+        this.actionList[this.indexAction].onStart?.(type);
     }
-
-    // private _reverseTween(): void {
-    //     this.repeatStep = -this.repeatStep;
-    //     this._startActions("reverse");
-    // }
-
-    // /**
-    //  * 翻转所有Action，这是内部函数，请不要外部调用
-    //  */
-    // private _reverseActions(): void {
-    //     this.isReversed = !this.isReversed;
-    //     // if (this.indexAction >= this.actionList.length)
-    //     //     this.indexAction = this.actionList.length - 1;
-    //     // else if (this.indexAction < 0)
-    //     //     this.indexAction = 0;
-    //     this._startActions("reverse");
-    //     // this.actionList[this.indexAction]?.onStart("reverse");
-    // }
 
     /**
      * 更新所有Action。这是内部函数，请不要外部调用
@@ -880,7 +890,7 @@ export class XTween<T extends Object> {
      */
     _updateTween(deltaTime: number): boolean {
         if (this.updateActions(this.timeAxis == "forward" ? deltaTime : -deltaTime)) return true;
-        // console.log("repeatCount", this.timeAxis, this.repeatCount);
+        // console.log("repeatCount", this.actionList.length, this.timeAxis, this.repeatCount);
         if (!this.checkRepeatCount()) return false;
         this.repeatCount += this.repeatStep;
 
@@ -898,7 +908,7 @@ export class XTween<T extends Object> {
             return true;
         action.onCompleted?.();
 
-        // console.log("indexAction", this.timeAxis, this.indexAction, this.actionList.length);
+        // console.log("indexAction", this.actionList.length, this.timeAxis, this.indexAction);
         if (!this.checkIndexActions()) return false;
         this.timeAxis == "forward" ? this.indexAction++ : this.indexAction--;
 
@@ -921,7 +931,7 @@ export class XTween<T extends Object> {
     }
 
     private checkRepeatCount(): boolean {
-        return this.timeAxis == "forward" ? this.repeatCount < this.repeatTimes : this.repeatCount > 1;
+        return this.repeatStep == 1 ? this.repeatCount < this.repeatTimes : this.repeatCount > 1;
     }
 
     private checkIndexActions(): boolean {
