@@ -489,47 +489,6 @@ const tweenManager = new TweenManager();
  * 支持每一个动作进行onStart, onUpdate, onComplete事件回调。
  * 支持泛型参数推导。可以对要补间的动画参数进行语法检查和补全。
  * 支持连续拼接动作。
- * 
- * ```
- *  // 注意使用时需要每帧更新一下
- *  setInterval(XTween.updateTweens, 1);
- *
- *  class Target {
- *      visable: boolean = false;
- *      position = { x: 0, y: 0, z: 0 };
- *      rotation: number = 0;
- *      alpha: number = 0;
- *      width: number = 100;
- *      height: number = 200;
- *  }
- *
- *  let target = new Target();
- *  let target2 = new Target();
- *
- *  xtween(target)
- *      .to(1000, { width: 500, rotation: 360 }, { easing: XTween.Easing.Back.Out })
- *      .to(1500, { height: 600 }, {
- *          onComplete: (target) => {
- *              console.log("onComplete 1", target);
- *          }
- *      })
- *      .delay(1000)
- *      .repeat(4, true, xtween(target).to(300, { alpha: 1 }).to(300, { alpha: 0 }))
- *      .sequence(xtween(target).to(1000, { rotation: 100 }), xtween(target2).to(1000, { rotation: 100 }))
- *      .call(() => {
- *          console.log("Call 1", target, target2);
- *      })
- *      .to(1500, { position: { x: 10, y: 20, z: 30 } }, {
- *          onStart: (target) => {
- *              console.log("onStart ", target);
- *          }
- *      })
- *      .set({ visable: false })
- *      .call(() => {
- *          console.log("Call 2", target, target2);
- *      })
- *      .start();
- * ```
  */
 export class XTween<T extends Object> {
     /** 时间默认单位（秒） */
@@ -801,7 +760,7 @@ export class XTween<T extends Object> {
     }
 
     /**
-     * 对于当前播放过的运作进行反向播放
+     * 对于当前播放过的运作进行反向播放，此函数必须先start后才可以正常使用，start后，可以反复多次调整。
      * @returns 返回当前补间动画实例
      */
     public reverse(): XTween<T> {
@@ -815,18 +774,6 @@ export class XTween<T extends Object> {
                 tweenManager.add(this);
         }
         return this;
-    }
-
-    _onInit(): void {
-        this.repeatCount = 1;
-        this.indexAction = 0;
-        for (let action of this.actionList)
-            action.onInit?.();
-    }
-
-    _onStart(type: TimeAxis): void {
-        this.repeatStep = type == "forward" ? +1 : -1;
-        this._startActions(type);
     }
 
     /**
@@ -874,6 +821,24 @@ export class XTween<T extends Object> {
     public onFinally<F extends (result: boolean) => void>(callback: F, thisArg?: any): XTween<T> {
         this.onFinallyFunc = new CallFunction(callback, thisArg);
         return this;
+    }
+
+    /**
+     * 初始化Tween，这是内部函数，请不要外部调用
+     */
+    _onInit(): void {
+        this.repeatCount = 1;
+        this.indexAction = 0;
+        for (let action of this.actionList)
+            action.onInit?.();
+    }
+
+    /**
+     * 开始Tween，这是内部函数，请不要外部调用
+     */
+    _onStart(type: TimeAxis): void {
+        this.repeatStep = type == "forward" ? +1 : -1;
+        this._startActions(type);
     }
 
     /**
@@ -939,33 +904,53 @@ export class XTween<T extends Object> {
     }
 
     //----------------------------------------------------------------------------------------------------------------------------
+    /**
+     * 对目标对象属性进行补间动作
+     * @param target 目标
+     * @param duration 补间时长
+     * @param properties 属性集
+     * @param options 补间可选参数
+     * @returns 返回当前补间动画实例
+     */
     public static to<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
         return new XTween(target).to(duration, properties, options);
     }
 
+    /**
+     * 对目标对象属性进行补间动作
+     * @param target 目标
+     * @param duration 补间时长
+     * @param properties 属性集
+     * @param options 补间可选参数
+     * @returns 返回当前补间动画实例
+     */
+    public static from<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
+        return new XTween(target).from(duration, properties, options);
+    }
+
+    /**
+     * 对目标对象属性进行补间动作
+     * @param target 目标
+     * @param duration 补间时长
+     * @param fromProperties 起始属性集
+     * @param toProperties 终止属性集
+     * @param options 补间可选参数
+     * @returns 返回当前补间动画实例
+     */
+    public static fromTo<T extends Object>(target: T, duration: number, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
+        return new XTween(target).fromTo(duration, fromProperties, fromProperties, options);
+    }
+
+    /**
+      * 对目标对象属性进行补间动作
+      * @param target 目标
+      * @param duration 补间时长
+      * @param properties 属性集
+      * @param options 补间可选参数
+      * @returns 返回当前补间动画实例
+      */
     public static by<T extends Object>(target: T, duration: number, properties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
         return new XTween(target).by(duration, properties, options);
-    }
-
-    /**
-     * 创建一个重复执行的Tween
-     * @param repeatTimes 重复次数，无限次数使用Infinity
-     * @param pingPong 是否来回缓动
-     * @param repeatTween 需要被重复执行的Tween
-     * @returns 返回补间动画实例
-     */
-    public static repeat<T>(target: T, repeatTimes: number, pingPong?: boolean): XTween<T> {
-        return new XTween(target, repeatTimes, pingPong)
-    }
-
-    /**
-     * 创建一个无限重复执行的Tween
-     * @param pingPong 是否来回缓动
-     * @param repeatTween 需要被重复执行的Tween
-     * @returns 返回补间动画实例
-     */
-    public static repeatForever<T>(target: T, pingPong?: boolean): XTween<T> {
-        return new XTween(target, Infinity, pingPong)
     }
 
     /**
