@@ -6,6 +6,7 @@
     "outDir": "./dist", /* Redirect output structure to the directory. */
     "esModuleInterop": true, /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
     "declaration": true,
+    "allowJs": false,
     "experimentalDecorators": true
     // "skipLibCheck": true,                     /* Skip type checking of declaration files. */
     // "forceConsistentCasingInFileNames": true  /* Disallow inconsistently-cased references to the same file. */

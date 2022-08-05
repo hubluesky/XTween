@@ -193,7 +193,7 @@ class CallFunction {
 }
 
 interface Action {
-    onInit?(): void;
+    onResetTween?(): void;
     onStart?(type: TimeAxis): void;
     onUpdate(deltaTime: number): boolean;
     onCompleted?(): void;
@@ -391,9 +391,9 @@ class ParallelAction<T> implements Action {
 
     public constructor(public readonly tweens: XTween<T>[]) { }
 
-    public onInit(): void {
+    public onResetTween(): void {
         for (let tween of this.tweens)
-            tween._onInit();
+            tween._onResetTween();
     }
 
     public onStart(type: TimeAxis): void {
@@ -527,7 +527,7 @@ export class XTween<T extends Object> {
     }
 
     /**
-     * 设置tween标识，以方便{@link XTween.removeTagTweens }时使用
+     * 设置tween标识，以方便{@link XTween.removeTagTweens}时使用
      * @param tag 标识符号
      * @returns 返回当前补间动画实例
      */
@@ -641,7 +641,6 @@ export class XTween<T extends Object> {
         return this as unknown as XTween<T>;
     }
 
-
     /**
       * 对目标对象属性进行补间动作
       * @param duration 补间时长
@@ -751,7 +750,7 @@ export class XTween<T extends Object> {
         } else {
             this._isPlaying = true;
             this._isPaused = false;
-            this._onInit();
+            this._onResetTween();
             this._onStart("forward");
             if (!tweenManager.containerTween(this))
                 tweenManager.add(this);
@@ -826,11 +825,15 @@ export class XTween<T extends Object> {
     /**
      * 初始化Tween，这是内部函数，请不要外部调用
      */
-    _onInit(): void {
+    _onResetTween(): void {
         this.repeatCount = 1;
+        this.resetActions();
+    }
+
+    private resetActions(): void {
         this.indexAction = 0;
         for (let action of this.actionList)
-            action.onInit?.();
+            action.onResetTween?.();
     }
 
     /**
@@ -862,6 +865,7 @@ export class XTween<T extends Object> {
         if (this.pingPong) {
             this._startActions(this.timeAxis == "forward" ? "inverse" : "forward");
         } else {
+            this.resetActions();
             this._startActions(this.timeAxis);
         }
         return true;

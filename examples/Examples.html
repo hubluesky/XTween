@@ -36,7 +36,7 @@
         requestAnimationFrame(updateXTween);
 
         let style = document.querySelector(".green").style;
-        let target = { _x: 0, _r: 0 };
+        let target = { _x: 0, _r: 0, _a: 1 };
         target = Object.defineProperties(target, {
             x: {
                 get: function () {
@@ -55,18 +55,34 @@
                     target._r = v;
                     style.transform = `translateX(${this._x}px) rotate(${v}deg)`;
                 }
+            },
+            alpha: {
+                get: function () {
+                    return target._a;
+                },
+                set: function (v) {
+                    target._a = v;
+                    style.opacity = v;
+                }
             }
         });
 
         let width = 470;
-        let repeatTween = new XTween(target, 1, true)
-            // .set({ angle: 45 })
-            // .to(1.2, { x: width / 2 }, { easing: "circularInOut" })
-            // .to(0.5, { angle: 100 })
-            // .to(1.2, { x: width }, { easing: "circularInOut" })
-            // .set({ angle: 0 }).delay(0.5)
-            // .onFinally(() => console.log("ffffffffff"))
-            .fromTo(1.2, { x: 240 }, { x: width }, { easing: "circularInOut" })
+        let repeatTween = 
+        new XTween(target, Infinity).add(
+            new XTween(target, 3, true).add(
+                new XTween(target).to(1, { x: width }),
+                new XTween(target).to(1, { alpha: 0.3 }),
+            )
+        ).delay(1)
+            .start();
+        // .set({ angle: 45 })
+        // .to(1.2, { x: width / 2 }, { easing: "circularInOut" })
+        // .to(0.5, { angle: 100 })
+        // .to(1.2, { x: width }, { easing: "circularInOut" })
+        // .set({ angle: 0 }).delay(0.5)
+        // .onFinally(() => console.log("ffffffffff"))
+        // .fromTo(1.2, { x: 240 }, { x: width }, { easing: "circularInOut" })
 
         let tween = new XTween(target).to(0.5, { x: 0, angle: 360 }).add(repeatTween).to(1.35, { x: width, angle: -360 });
         // tween = repeatTween;
