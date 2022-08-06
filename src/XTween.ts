@@ -469,8 +469,8 @@ class TweenManager {
             if (tween == null)
                 this.tweenList.splice(i, 1);
             else if (!tween._updateTween(deltaTime)) {
-                tween._clear();
                 this.tweenList.splice(i, 1);
+                tween._clear();
             }
         }
     }
@@ -816,8 +816,8 @@ export class XTween<T extends Object> {
      * @param callback 回调函数
      * @returns 返回当前补间动画实例
      */
-    public onFinally<F extends (result: boolean) => void>(callback: F, thisArg?: any): XTween<T> {
-        this.onFinallyFunc = new CallFunction(callback, thisArg);
+    public onFinally<F extends (result: boolean) => void>(callback: F | null, thisArg?: any): XTween<T> {
+        this.onFinallyFunc = callback == null ? null : new CallFunction(callback, thisArg);
         return this;
     }
 

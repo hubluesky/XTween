@@ -77,7 +77,7 @@
 
         let width = 470;
         let tween =
-            new XTween(target1, Infinity).setTag("tag1")
+            new XTween(target1, 2).setTag("tag1")
                 .set(target2, { alpha: 1 })
                 .add(
                     new XTween(target1, 3, true).setTag("tag2").add(
@@ -95,7 +95,11 @@
         // .to(0.5, { angle: 100 })
         // .to(1.2, { x: width }, { easing: "circularInOut" })
         // .set({ angle: 0 }).delay(0.5)
-        tween.onFinally(() => console.log("onFinally"))
+        tween.onFinally(() => {
+            console.log("onFinally ");
+            tween.onFinally(null);
+            tween.reverse();
+        })
         // .fromTo(1.2, { x: 240 }, { x: width }, { easing: "circularInOut" })
 
         // let tween = new XTween(target1).to(0.5, { x: 0, angle: 360 }).add(repeatTween).to(1.35, { x: width, angle: -360 });

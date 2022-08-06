@@ -228,3 +228,28 @@ test("xtween inner repeat and repeat", () => {
     expect(obj.alpha).toBe(0.24);
 });
 
+
+test.only("xtween inner repeats then reverse", () => {
+    let obj1 = { x: 0 };
+    let obj2 = { x: 0, alpha: 1 };
+    let times1 = 2, times2 = 3, duration = 90, duration2 = 54, delay = 140;
+    let tween = new XTween(obj1, times1)
+        .set(obj2, { alpha: 1 })
+        .add(new XTween(obj1, times2, true).add(
+            XTween.to(obj1, duration, { x: 135 }),
+            XTween.to(obj2, duration, { x: 135 }),
+        )).add(
+            XTween.to(obj1, duration2, { x: 0 }),
+            XTween.to(obj2, duration2, { x: 250, alpha: 0 }),
+        ).delay(delay).play();
+
+    tween.onFinally(() => {
+        console.log("onFinally ");
+        tween.onFinally(null);
+        tween.reverse();
+    })
+    jest.advanceTimersByTime(times1 * (duration * (times2+1) + duration2 + delay) * 2 + frameInterval);
+    expect(obj1.x).toBe(0);
+    expect(obj2.x).toBe(0);
+    expect(obj2.alpha).toBe(1);
+});
