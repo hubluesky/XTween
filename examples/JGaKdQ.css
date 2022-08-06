@@ -2,7 +2,7 @@ body {
     background-color:#1d1d1d;
     font-family: "Signika Negative", sans-serif;
     color: #999;
-    margin: 0;
+    margin: 20;
     font-size: 18px;
   }
   
@@ -47,8 +47,8 @@ body {
     height:50px;
     position:relative;
     border-radius:6px;
-    margin-top:4px;
-    display:inline-block;
+    margin-top:10px;
+    display:block;
     line-height:50px;
     text-align:center;
     color:#333;

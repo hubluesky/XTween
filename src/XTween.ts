@@ -193,7 +193,7 @@ class CallFunction {
 }
 
 interface Action {
-    onResetTween?(): void;
+    onInit?(type: TimeAxis): void;
     onStart?(type: TimeAxis): void;
     onUpdate(deltaTime: number): boolean;
     onCompleted?(): void;
@@ -205,16 +205,13 @@ class DelayAction implements Action {
 
     public constructor(public readonly duration: number) { }
 
-    public onStart(type: TimeAxis): void {
+    public onInit(type: TimeAxis): void {
         switch (type) {
             case "forward":
                 this.elapsedTime = 0;
                 break;
             case "inverse":
-                if (this.elapsedTime > this.duration)
-                    this.elapsedTime = this.duration;
-                else if (this.elapsedTime < 0)
-                    this.elapsedTime = 0;
+                this.elapsedTime = this.duration;
                 break;
         }
     }
@@ -320,19 +317,19 @@ class TweenAction<T> extends TargetAction<T> {
         }
     }
 
-    public onStart(type: TimeAxis): void {
-        super.onStart(type);
+    public onInit(type: TimeAxis): void {
         switch (type) {
             case "forward":
                 this.elapsedTime = 0;
                 break;
             case "inverse":
-                if (this.elapsedTime > this.duration)
-                    this.elapsedTime = this.duration;
-                else if (this.elapsedTime < 0)
-                    this.elapsedTime = 0;
+                this.elapsedTime = this.duration;
                 break;
         }
+    }
+
+    public onStart(type: TimeAxis): void {
+        super.onStart(type);
         this.options.onStart?.(this.target);
     }
 
@@ -391,9 +388,9 @@ class ParallelAction<T> implements Action {
 
     public constructor(public readonly tweens: XTween<T>[]) { }
 
-    public onResetTween(): void {
+    public onInit(type: TimeAxis): void {
         for (let tween of this.tweens)
-            tween._onResetTween();
+            tween._onInit(type);
     }
 
     public onStart(type: TimeAxis): void {
@@ -498,7 +495,7 @@ export class XTween<T extends Object> {
 
     private readonly actionList: Action[] = [];
     private onFinallyFunc: CallFunction;
-    private repeatCount: number = 1;
+    private repeatCount: number = 0;
     private repeatStep: number = 1;
     private indexAction: number = 0;
     private timeAxis: TimeAxis;
@@ -519,10 +516,11 @@ export class XTween<T extends Object> {
     /**
      * 创建一个补间动画
      * @param target 要补间的目标对象，也是默认为此tween的tag，如果想自定义tag，请调用{@link setTag}函数
-     * @param repeatTimes 重复次数，如果是无限重复，请使用Infinity
+     * @param repeatTimes 重复次数，最小值为1，如果是无限重复，请使用Infinity
      * @param pingPong 重复使用pingPong模式，只在repeatTimes>0时有效
      */
-    public constructor(target: T, readonly repeatTimes: number = 0, readonly pingPong: boolean = false) {
+    public constructor(target: T, readonly repeatTimes: number = 1, readonly pingPong: boolean = false) {
+        this.repeatTimes = Math.max(1, this.repeatTimes);
         this._tag = this.taget = target;
     }
 
@@ -735,22 +733,22 @@ export class XTween<T extends Object> {
      * 开始当前Tween的所有动作
      * @returns 返回当前补间动画实例
      */
-    public start(): XTween<T> {
+    public play(): XTween<T> {
         if (this.isPlaying || this.isPaused) return this;
-        return this.restart();
+        return this.replay();
     }
 
     /**
      * 重新开始当前Tween的所有动作
      * @returns 返回当前补间动画实例
      */
-    public restart(): XTween<T> {
+    public replay(): XTween<T> {
         if (this.actionList.length == 0) {
             this._clear();
         } else {
             this._isPlaying = true;
             this._isPaused = false;
-            this._onResetTween();
+            this._onInit("forward");
             this._onStart("forward");
             if (!tweenManager.containerTween(this))
                 tweenManager.add(this);
@@ -759,7 +757,8 @@ export class XTween<T extends Object> {
     }
 
     /**
-     * 对于当前播放过的运作进行反向播放，此函数必须先start后才可以正常使用，start后，可以反复多次调整。
+     * 对于当前播放过的运作进行反向播放,相当于视频播放一段时间后，然后倒着播放，可以在任意时刻倒放。
+     * 此函数必须先start后才可以正常使用，start后，可以反复多次调整。
      * @returns 返回当前补间动画实例
      */
     public reverse(): XTween<T> {
@@ -825,15 +824,16 @@ export class XTween<T extends Object> {
     /**
      * 初始化Tween，这是内部函数，请不要外部调用
      */
-    _onResetTween(): void {
-        this.repeatCount = 1;
-        this.resetActions();
+    _onInit(type: TimeAxis): void {
+        this.timeAxis = type;
+        this.repeatCount = type == "forward" ? 0 : this.repeatTimes - 1;
+        this.resetActions(type);
     }
 
-    private resetActions(): void {
-        this.indexAction = 0;
+    private resetActions(type: TimeAxis): void {
+        this.indexAction = type == "forward" ? 0 : this.actionList.length - 1;
         for (let action of this.actionList)
-            action.onResetTween?.();
+            action.onInit?.(type);
     }
 
     /**
@@ -865,7 +865,7 @@ export class XTween<T extends Object> {
         if (this.pingPong) {
             this._startActions(this.timeAxis == "forward" ? "inverse" : "forward");
         } else {
-            this.resetActions();
+            this.resetActions(this.timeAxis);
             this._startActions(this.timeAxis);
         }
         return true;
@@ -900,7 +900,7 @@ export class XTween<T extends Object> {
     }
 
     private checkRepeatCount(): boolean {
-        return this.repeatStep == 1 ? this.repeatCount < this.repeatTimes : this.repeatCount > 1;
+        return this.repeatStep == 1 ? this.repeatCount + 1 < this.repeatTimes : this.repeatCount > 0;
     }
 
     private checkIndexActions(): boolean {
@@ -942,7 +942,7 @@ export class XTween<T extends Object> {
      * @returns 返回当前补间动画实例
      */
     public static fromTo<T extends Object>(target: T, duration: number, fromProperties: ConstructorType<T>, toProperties: ConstructorType<T>, options?: ITweenOption<T>): XTween<T> {
-        return new XTween(target).fromTo(duration, fromProperties, fromProperties, options);
+        return new XTween(target).fromTo(duration, fromProperties, toProperties, options);
     }
 
     /**

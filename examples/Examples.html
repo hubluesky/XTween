@@ -17,13 +17,14 @@
 
 <body>
     <div class="box green"></div>
+    <div class="box orange"></div>
 
     <div class="nav">
         <button id="play">play()</button>
         <button id="pause">pause()</button>
         <button id="resume">resume()</button>
         <button id="reverse">reverse()</button>
-        <button id="restart">restart()</button>
+        <button id="replay">restart()</button>
     </div>
 
     <script type="module">
@@ -35,67 +36,80 @@
         };
         requestAnimationFrame(updateXTween);
 
-        let style = document.querySelector(".green").style;
-        let target = { _x: 0, _r: 0, _a: 1 };
-        target = Object.defineProperties(target, {
-            x: {
-                get: function () {
-                    return target._x;
+        let style1 = document.querySelector(".green").style;
+        let style2 = document.querySelector(".orange").style;
+
+        function createTarget(style) {
+            let target = { _x: 0, _r: 0, _a: 1 };
+            return Object.defineProperties(target, {
+                x: {
+                    get: function () {
+                        return target._x;
+                    },
+                    set: function (v) {
+                        target._x = v;
+                        style.transform = `translateX(${v}px) rotate(${this._r}deg)`;
+                    }
                 },
-                set: function (v) {
-                    target._x = v;
-                    style.transform = `translateX(${v}px) rotate(${this._r}deg)`;
-                }
-            },
-            angle: {
-                get: function () {
-                    return target._r;
+                angle: {
+                    get: function () {
+                        return target._r;
+                    },
+                    set: function (v) {
+                        target._r = v;
+                        style.transform = `translateX(${this._x}px) rotate(${v}deg)`;
+                    }
                 },
-                set: function (v) {
-                    target._r = v;
-                    style.transform = `translateX(${this._x}px) rotate(${v}deg)`;
+                alpha: {
+                    get: function () {
+                        return target._a;
+                    },
+                    set: function (v) {
+                        target._a = v;
+                        style.opacity = v;
+                    }
                 }
-            },
-            alpha: {
-                get: function () {
-                    return target._a;
-                },
-                set: function (v) {
-                    target._a = v;
-                    style.opacity = v;
-                }
-            }
-        });
+            });
+        }
+
+        let target1 = createTarget(style1);
+        let target2 = createTarget(style2);
 
         let width = 470;
-        let repeatTween = 
-        new XTween(target, Infinity).add(
-            new XTween(target, 3, true).add(
-                new XTween(target).to(1, { x: width }),
-                new XTween(target).to(1, { alpha: 0.3 }),
-            )
-        ).delay(1)
-            .start();
+        let tween =
+            new XTween(target1, Infinity).setTag("tag1")
+                .set(target2, { alpha: 1 })
+                .add(
+                    new XTween(target1, 3, true).setTag("tag2").add(
+                        XTween.to(target1, 1, { x: width / 2 }),
+                        new XTween(target2).setTag("tag21").to(target2, 1, { x: width / 2 }),
+                    )
+                ).add(new XTween(target1).setTag("tag3").add(
+                    XTween.to(target1, 1, { x: 0 }),
+                    new XTween(target2).setTag("tag31").to(target2, 1, { x: width, alpha: 0.3 }),
+                ))
+                .delay(0.5)
+                .play();
         // .set({ angle: 45 })
         // .to(1.2, { x: width / 2 }, { easing: "circularInOut" })
         // .to(0.5, { angle: 100 })
         // .to(1.2, { x: width }, { easing: "circularInOut" })
         // .set({ angle: 0 }).delay(0.5)
-        // .onFinally(() => console.log("ffffffffff"))
+        tween.onFinally(() => console.log("onFinally"))
         // .fromTo(1.2, { x: 240 }, { x: width }, { easing: "circularInOut" })
 
-        let tween = new XTween(target).to(0.5, { x: 0, angle: 360 }).add(repeatTween).to(1.35, { x: width, angle: -360 });
+        // let tween = new XTween(target1).to(0.5, { x: 0, angle: 360 }).add(repeatTween).to(1.35, { x: width, angle: -360 });
         // tween = repeatTween;
         // .delay(1);
 
         // new XTween({}).call(()=> console.log("start")).delay(1).call(()=> console.log("end"))
         //     .onFinally(()=> console.log("finally")).start();
 
-        document.querySelector("#play").onclick = () => tween.start();
+        document.querySelector("#play").onclick = () => tween.play();
         document.querySelector("#pause").onclick = () => tween.pause();
         document.querySelector("#resume").onclick = () => tween.resume();
         document.querySelector("#reverse").onclick = () => tween.reverse();
-        document.querySelector("#restart").onclick = () => tween.restart();
+        document.querySelector("#replay").onclick = () => tween.replay();
     </script>
 
 </body>

@@ -23,13 +23,13 @@ let size = new Size();
 假设我们有这么一个对象，想对宽度做补间动画，在0.6秒后宽度变为150，只需要使用以前这行代码即可。
 
 ```
-XTween.to(size, 0.6, { width: 150 }).start();
+XTween.to(size, 0.6, { width: 150 }).play();
 ```
 
 也可以使用by的方式来做**增量**补间动画。
 
 ```
-XTween.by(size, 0.6, { width: 50 }).start();
+XTween.by(size, 0.6, { width: 50 }).play();
 ```
 
 by跟to的区别是：
@@ -87,7 +87,7 @@ export interface ITweenOption<T> {
 * `Bounce`
 
 ```
-XTween.to(size, 0.6, { width: 150 }, { easing: "backOut" }).start();
+XTween.to(size, 0.6, { width: 150 }, { easing: "backOut" }).play();
 ```
 
 ### 自定义缓动类型（`BezierEase`和`SvgPathEase`）
@@ -96,15 +96,15 @@ PS：SvgPath算法是从[gsap](https://github.com/greensock/GSAP)中抄来，不
 
 ```
 // BezierEase
-XTween.to(size, 0.6, { width: 150 }, { easing: BezierEase.create(0, 0, 1, 1) }).start();
+XTween.to(size, 0.6, { width: 150 }, { easing: BezierEase.create(0, 0, 1, 1) }).play();
 // SvgPathEase
-XTween.to(size, 0.6, { width: 150 }, { easing: SvgPathEase.create("M0,0 C0,0 1,1 1,1") }).start();
+XTween.to(size, 0.6, { width: 150 }, { easing: SvgPathEase.create("M0,0 C0,0 1,1 1,1") }).play();
 // 自定义easing方式
 XTween.to(size, 0.6, { width: 150 }, {
     easing: function (amount: number): number {
         return amount;
     }
-}).start();
+}).play();
 ```
 
 ### 插值类型（`Interpolation`)
@@ -112,7 +112,7 @@ XTween.to(size, 0.6, { width: 150 }, {
 在tween计算属性补间动画的过程中，有三个值，分别是start（属性的起始值）、end（属性的结束值）、ratio（属性随时间的比例值），Easing是对缓动比例ratio进行插值，而 `Interpolation`插值是对start、end和ratio这三个数进行插值，默认是使用线性插值方式，如果有需要，也可以自定义插值方式。
 
 ```
-XTween.to(size, 0.6, { width: 150 }, { progress: XTween.Easing.sinusoidalIn }).start();
+XTween.to(size, 0.6, { width: 150 }, { progress: XTween.Easing.sinusoidalIn }).play();
 ```
 
 ### 回调函数
@@ -134,7 +134,7 @@ XTween.to(size, 0.6, { width: 150 }, {
     onComplete: () => {
         console.log("on width change complete");
     },
-}).start();
+}).play();
 ```
 
 ### 多个动画之间的拼接
@@ -144,7 +144,7 @@ XTween.to(size, 0.6, { width: 150 }, {
 XTween.to(size, 0.6, { height: 250 }).add(
     XTween.to(size, 0.6, { width: 150 }),
     XTween.to(transform, 0.3, { rotation: 30 })
-).start();
+).play();
 ```
 
 ### 连续补间动画
@@ -152,7 +152,7 @@ XTween.to(size, 0.6, { height: 250 }).add(
 如果想先做width动画后，再在1秒内把height变为300，只需要连to两下就可以了。
 
 ```
-XTween.to(size, 0.6, { width: 150 }).to(1, { height: 300 }).start();
+XTween.to(size, 0.6, { width: 150 }).to(1, { height: 300 }).play();
 ```
 
 ### 转变动画target
@@ -169,18 +169,18 @@ let transform= new Transform();
 先是修改size的width，完成后再修改transform的rotation
 
 ```
-XTween.to(size, 0.6, { width: 150 }).to(transform, 0.3, { rotation: 30 }).start();
+XTween.to(size, 0.6, { width: 150 }).to(transform, 0.3, { rotation: 30 }).play();
 ```
 
 ### 重复动画
 
 ```
 // 重复执行4次
-new XTween(size, 4).to(0.6, { width: 150 }).to(0.7, { width: 100 }).start();
+new XTween(size, 4).to(0.6, { width: 150 }).to(0.7, { width: 100 }).play();
 // 永远重复
-new XTween(size, Infinity).to(0.6, { width: 150 }).to(0.7, { height: 100 }).start();
+new XTween(size, Infinity).to(0.6, { width: 150 }).to(0.7, { height: 100 }).play();
 // pingPong模式，来回补间动画
-new XTween(size, Infinity, true).to(0.6, { width: 150 }).start();
+new XTween(size, Infinity, true).to(0.6, { width: 150 }).play();
 ```
 
 repeat动画会记录被重复的tween的起始值，使每一次重复都能从头开始。如果pingpong模式为true，就会在repeat一次后，被重复的tween会整个被反过来执行，比如上面的第二个动画。size对象第一次执行为：width会从“当前值”到150，然后就是height从“当前值”到100。第二次执行为：height从100到“当前值”，然后就是width从150到“当前值，如此重复。
@@ -192,7 +192,7 @@ repeat动画会记录被重复的tween的起始值，使每一次重复都能从
 XTween.to(size, 0.6, { height: 150 }).add(
     XTween.to(size, 0.6, { width: 150 }),
     XTween.to(transform, 0.3, { rotation: 30 })
-).start();
+).play();
 ```
 
 ### 内嵌重复Tween动画
@@ -201,7 +201,7 @@ XTween.to(size, 0.6, { height: 150 }).add(
 // 先执行size.width然后重复多次transform.rotation动画，最后再执行size.width动画
 XTween.to(size, 0.6, { height: 150 }).add(
     new XTween(transform, 6, true).to(0.6, { rotation: 360 }),
-).to(0.5, { width: 300 }).start();
+).to(0.5, { width: 300 }).play();
 ```
 
 ### 一些功能函数
@@ -210,8 +210,8 @@ XTween.to(size, 0.6, { height: 150 }).add(
 `setTag` 设置Tween的标识，方便删除时使用
 `delay` 延迟多久后执行
 `call` 回调函数
-`start` 开始Tween
-`restart` 重新开始Tween
+`play` 开始Tween
+`replay` 重新开始Tween
 `reverse` 在开始Tween之后，可以倒着往回播放Tween，支持反复调用，来回正反播放。
 `pause` 暂停tween（只有最顶层的tween才有效果）
 `resume` 恢复tween（只有最顶层的tween才有效果)
@@ -247,5 +247,5 @@ new XTween(target)
         console.log("Call 2", target, target2);
     })
     .onFinally(() => console.log("onFinally"))
-    .start();
+    .play();
 ```
