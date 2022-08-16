@@ -150,6 +150,10 @@ const TweenEasing = {
     },
 };
 
+export namespace XTween {
+    export type EaseType = EasingType | EasingFunction;
+}
+
 /**
  * Tween的可选参数
  */
@@ -157,7 +161,7 @@ export interface ITweenOption<T> {
     /**
      * 缓动函数，可以使用已有的，也可以传入自定义的函数。
      */
-    easing?: EasingType | EasingFunction;
+    easing?: XTween.EaseType;
 
     /**
      * 插值函数，参数的意义 start:起始值，end:目标值，ratio:当前进度
