@@ -67,10 +67,10 @@ const TweenEasing = {
     sinusoidalIn: function (amount: number): number {
         return 1 - Math.cos((amount * Math.PI) / 2);
     },
-    sinusoidaOut: function (amount: number): number {
+    sinusoidalOut: function (amount: number): number {
         return Math.sin((amount * Math.PI) / 2);
     },
-    sinusoidaInOut: function (amount: number): number {
+    sinusoidalInOut: function (amount: number): number {
         return 0.5 * (1 - Math.cos(Math.PI * amount));
     },
     exponentialIn: function (amount: number): number {
