@@ -191,8 +191,7 @@ function lerp(start: number, end: number, t: number): number {
 class CallFunction {
     public constructor(public readonly callback: Function, public readonly thisArg?: any, public readonly argArray?: any[]) { }
     public call(...argArray: any[]): any {
-        if (this.argArray && argArray.length > 0) argArray.unshift(...this.argArray);
-        return this.callback?.call(this.thisArg, ...argArray);
+        return this.callback?.call(this.thisArg, ...this.argArray, ...argArray);
     }
 }
 
