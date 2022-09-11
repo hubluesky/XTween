@@ -67,10 +67,10 @@ const TweenEasing = {
     sinusoidalIn: function (amount: number): number {
         return 1 - Math.cos((amount * Math.PI) / 2);
     },
-    sinusoidaOut: function (amount: number): number {
+    sinusoidalOut: function (amount: number): number {
         return Math.sin((amount * Math.PI) / 2);
     },
-    sinusoidaInOut: function (amount: number): number {
+    sinusoidalInOut: function (amount: number): number {
         return 0.5 * (1 - Math.cos(Math.PI * amount));
     },
     exponentialIn: function (amount: number): number {
@@ -150,6 +150,10 @@ const TweenEasing = {
     },
 };
 
+export namespace XTween {
+    export type EaseType = EasingType | EasingFunction;
+}
+
 /**
  * Tween的可选参数
  */
@@ -157,7 +161,7 @@ export interface ITweenOption<T> {
     /**
      * 缓动函数，可以使用已有的，也可以传入自定义的函数。
      */
-    easing?: EasingType | EasingFunction;
+    easing?: XTween.EaseType;
 
     /**
      * 插值函数，参数的意义 start:起始值，end:目标值，ratio:当前进度
@@ -187,8 +191,7 @@ function lerp(start: number, end: number, t: number): number {
 class CallFunction {
     public constructor(public readonly callback: Function, public readonly thisArg?: any, public readonly argArray?: any[]) { }
     public call(...argArray: any[]): any {
-        if (this.argArray && argArray.length > 0) argArray.unshift(...this.argArray);
-        return this.callback?.call(this.thisArg, ...argArray);
+        return this.callback?.call(this.thisArg, ...this.argArray, ...argArray);
     }
 }
 
