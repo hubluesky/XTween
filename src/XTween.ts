@@ -758,7 +758,7 @@ export class XTween<T extends Object> {
 
     /**
      * 对于当前播放过的运作进行反向播放,相当于视频播放一段时间后，然后倒着播放，可以在任意时刻倒放。
-     * 此函数必须先start后才可以正常使用，start后，可以反复多次调整。
+     * 此函数必须先{@link play}后才可以正常使用，{@link play}后，可以反复多次调整。
      * @returns 返回当前补间动画实例
      */
     public reverse(): XTween<T> {
