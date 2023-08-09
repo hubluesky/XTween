@@ -191,7 +191,8 @@ function lerp(start: number, end: number, t: number): number {
 class CallFunction {
     public constructor(public readonly callback: Function, public readonly thisArg?: any, public readonly argArray?: any[]) { }
     public call(...argArray: any[]): any {
-        return this.callback?.call(this.thisArg, ...this.argArray, ...argArray);
+        if (this.argArray != null) argArray.unshift(...this.argArray);
+        return this.callback?.call(this.thisArg, ...argArray);
     }
 }
 
@@ -291,16 +292,17 @@ abstract class TargetAction<T> implements Action {
     }
 }
 
-class TweenSetAction<T> extends TargetAction<T> {
-    protected lerpFunction: LerpFunction<T> = this.lerpProperty.bind(this);
+class TweenSetAction<T> implements Action {
+    protected targetEnd: ConstructorType<T>;
 
-    public onUpdate(deltaTime: number): boolean {
-        TargetAction.updateProperties(this.target, this.valuesStart, this.valuesEnd, deltaTime, this.lerpFunction, undefined);
-        return false;
+    public constructor(public readonly target: T, properties: ConstructorType<T>) {
+        this.targetEnd = Object.assign({}, properties);
     }
 
-    protected lerpProperty(target: T, property: string, valuesStart: ConstructorType<T>, start: number, end: number, ratio: number, interpolation: InterpolationFunction) {
-        target[property] = ratio < 0 ? start : end;
+    public onUpdate(deltaTime: number): boolean {
+        for (const property in this.targetEnd)
+            this.target[property] = this.targetEnd[property];
+        return false;
     }
 }
 

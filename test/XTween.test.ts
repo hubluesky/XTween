@@ -52,6 +52,13 @@ test("finally call xtween", () => {
     expect(mockCall).toBeCalledTimes(1);
 });
 
+test.only("xtween set", () => {
+    const obj = { active: false };
+    new XTween(obj).set({ active: true }).play();
+    jest.advanceTimersByTime(frameInterval * 10);
+    expect(obj.active).toBe(true);
+});
+
 test('xtween repeat init value', () => {
     let t = new XTween({}, 2, true);
     expect(t.repeatTimes).toBe(2);
@@ -229,7 +236,7 @@ test("xtween inner repeat and repeat", () => {
 });
 
 
-test.only("xtween inner repeats then reverse", () => {
+test("xtween inner repeats then reverse", () => {
     let obj1 = { x: 0 };
     let obj2 = { x: 0, alpha: 1 };
     let times1 = 2, times2 = 3, duration = 90, duration2 = 54, delay = 140;
@@ -248,7 +255,7 @@ test.only("xtween inner repeats then reverse", () => {
         tween.onFinally(null);
         tween.reverse();
     })
-    jest.advanceTimersByTime(times1 * (duration * (times2+1) + duration2 + delay) * 2 + frameInterval);
+    jest.advanceTimersByTime(times1 * (duration * (times2 + 1) + duration2 + delay) * 2 + frameInterval);
     expect(obj1.x).toBe(0);
     expect(obj2.x).toBe(0);
     expect(obj2.alpha).toBe(1);
