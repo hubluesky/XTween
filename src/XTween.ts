@@ -265,7 +265,7 @@ abstract class TargetAction<T> implements Action {
     public static setupProperties<T>(target: T, valuesStart: ConstructorType<T>, valuesEnd: ConstructorType<T>, call: (value: number) => number): void {
         for (const property in valuesEnd) {
             const startValue = target[property];
-            const propType = typeof startValue ?? typeof valuesEnd[property];
+            const propType = startValue != null ? typeof startValue : typeof valuesEnd[property];
 
             if (propType === 'object') {
                 if (valuesStart[property] == null) valuesStart[property] = {};
@@ -280,7 +280,7 @@ abstract class TargetAction<T> implements Action {
         for (const property in valuesEnd) {
             let start = valuesStart[property] || 0;
             let end = valuesEnd[property];
-            const propType = typeof end ?? typeof start;
+            const propType = end != null ? typeof end : typeof start;
 
             if (propType === 'object') {
                 TargetAction.updateProperties(target[property], start, end, ratio, updateProperty, interpolation);
@@ -484,7 +484,7 @@ class TweenManager {
 const tweenManager = new TweenManager();
 
 /**
- * version 2.0
+ * version 2.1
  * 这是一个补间动画
  * 支持对象的number属性
  * 支持自定义插值，默认是线性插值。可以自定义为贝塞尔等。
